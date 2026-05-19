@@ -24,11 +24,11 @@
 
 - [x] **Step 1**: 프로젝트 초기화 및 CLAUDE.md 작성
   - git init, 기획·로드맵 문서화, 첫 커밋
-- [ ] **Step 2**: 이미지 분석 및 퀴즈 데이터 설계
+- [x] **Step 2**: 이미지 분석 및 퀴즈 데이터 설계
   - `스문_1단원_퀴즈판.png` / `스문_1단원_정답.png` 분석
   - 격자 크기·단어·힌트를 PUZZLE 데이터 구조로 확정
 - [ ] **Step 3**: 격자(Grid) UI 구현
-  - `quiz-01-sports/index.html` 생성
+  - `SportsC/1단원/index.html` 생성
   - PUZZLE 데이터 기반 격자 렌더링 (vmin 단위, 블로킹 셀)
 - [ ] **Step 4**: 한국어 입력 처리 및 정답 확인 기능
   - IME 조합 처리 (`compositionstart / compositionend`)
@@ -52,19 +52,19 @@
 ## 폴더 구조
 
 ```
-wordcross_sportsC/
-├── CLAUDE.md
-├── quiz-01-sports/
-│   └── index.html
-├── quiz-02-sports/
-│   └── index.html
-└── ...
+wordcross/                     ← 루트 (git 저장소)
+├── CLAUDE.md                  ← 프로젝트 공통 규칙
+├── .gitignore
+└── {과목폴더}/                ← 예: SportsC, MathA, ScienceB
+    └── {단원폴더}/            ← 예: 1단원, 2단원
+        ├── index.html
+        └── {단원명}_hint.md
 ```
 
 ### 폴더 네이밍 규칙
 
-`quiz-{순번(2자리)}-{주제(영문 소문자)}`  
-예: `quiz-01-sports`, `quiz-02-animals`, `quiz-03-history`
+- **과목 폴더**: `{과목명}` (영문, 대소문자 혼용 허용) — 예: `SportsC`, `MathA`
+- **단원 폴더**: `{N}단원` — 예: `1단원`, `2단원`
 
 ---
 
