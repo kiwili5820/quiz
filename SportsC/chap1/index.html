@@ -337,7 +337,7 @@ imeInput.addEventListener("compositionend", e => {
 imeInput.addEventListener("input", e => {
   // composing 플래그와 브라우저 native isComposing 모두 체크 (모바일 IME 대응)
   if (composing || e.isComposing) return;
-  const ch = [...(e.data || imeInput.value)][0] || "";
+  const ch = [...imeInput.value][0] || "";  // e.data 대신 value 사용 (compositionend 후 이중처리 방지)
   imeInput.value = "";
   if (!ch || !activeCell) return;
   const [r, c] = activeCell.split(",").map(Number);
