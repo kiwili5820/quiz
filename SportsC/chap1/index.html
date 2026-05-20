@@ -8,15 +8,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Paperlogy', sans-serif; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; font-size: 1.8rem; }
-h1 { font-size: 3rem; margin-bottom: 8px; color: #333; font-weight: 700; }
-.prompt { font-size: 1.8rem; color: #555; margin-bottom: 24px; }
+body { font-family: 'Paperlogy', sans-serif; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; font-size: 1.3rem; }
+h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
+.prompt { font-size: 1.3rem; color: #555; margin-bottom: 24px; }
 
 /* 탭 */
 .tabs { display: flex; width: 100%; max-width: 600px; margin-bottom: 0; border-radius: 8px 8px 0 0; overflow: hidden; }
 .tab-btn {
   flex: 1; padding: 14px 10px; border: none; background: #ddd; color: #555;
-  font-size: 1.5rem; font-weight: bold; cursor: pointer; transition: background .2s;
+  font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background .2s;
   font-family: 'Paperlogy', sans-serif;
 }
 .tab-btn.active { background: #1976D2; color: #fff; }
@@ -34,7 +34,7 @@ h1 { font-size: 3rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 }
 #qrcode { display: flex; align-items: center; justify-content: center; }
 #qrcode canvas, #qrcode img { width: 70vh !important; height: 70vh !important; max-width: 100%; }
-.qr-label { margin-top: 16px; font-size: 1.8rem; color: #444; }
+.qr-label { margin-top: 16px; font-size: 1.3rem; color: #444; }
 
 /* 퀴즈 패널 */
 #panel-quiz {
@@ -56,11 +56,11 @@ h1 { font-size: 3rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 
 /* 힌트 (격자 위) */
 .hints { margin-bottom: 14px; width: 100%; }
-.hints h2 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.hints h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
 .hints h2.across { color: #E62D8A; }
 .hints h2.down   { color: #00A3C0; }
 .hints ul { list-style: none; }
-.hints li { font-size: 1.6rem; line-height: 1.7; color: #333; padding: 3px 0; }
+.hints li { font-size: 1.1rem; line-height: 1.7; color: #333; padding: 3px 0; }
 .hints li span { font-weight: bold; margin-right: 4px; }
 .blank-box { display: inline-block; transform: scale(1.7); font-weight: 900; color: #1976D2; }
 /* 열쇠 아이콘 */
@@ -90,18 +90,31 @@ h1 { font-size: 3rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   font-size: 0.55rem; line-height: 1; color: #555; pointer-events: none;
 }
 .cell-char {
-  font-size: 1.6rem; font-weight: bold; color: #222;
+  font-size: 1.1rem; font-weight: bold; color: #222;
   font-family: 'Paperlogy', sans-serif;
   padding-top: 8px; line-height: 1; user-select: none; pointer-events: none;
 }
 .cell.focused .cell-char { color: #fff; }
 .cell.wrong .cell-char { color: #c62828; }
 
-/* 단일 IME 입력 — 화면 하단에 감춤 */
+/* 단일 IME 입력 */
 #ime-input {
   position: fixed; bottom: 0; left: 0;
   width: 100%; height: 2px; opacity: 0.01;
   border: none; outline: none; font-size: 16px; background: transparent;
+}
+/* 모바일: 화면 하단에 실제로 보이는 입력 바 */
+@media (max-width: 768px) {
+  #ime-input {
+    height: 50px; opacity: 1;
+    background: #EEF4FF;
+    border-top: 2px solid #1976D2;
+    border-left: none; border-right: none; border-bottom: none;
+    padding: 0 20px;
+    font-family: 'Paperlogy', sans-serif;
+    font-size: 16px; color: #333;
+  }
+  body { padding-bottom: 58px; }
 }
 
 /* 방향 표시 */
@@ -112,12 +125,12 @@ h1 { font-size: 3rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 
 /* 버튼 */
 .btn-row { display: flex; gap: 8px; margin-bottom: 4px; }
-button { padding: 14px 32px; border: none; border-radius: 6px; font-size: 1.5rem; cursor: pointer; font-weight: bold; font-family: 'Paperlogy', sans-serif; }
+button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; font-family: 'Paperlogy', sans-serif; }
 .btn-check { background: #1976D2; color: #fff; }
 .btn-reset { background: #757575; color: #fff; }
 
 /* 축하 메시지 */
-#congrats { display: none; font-size: 1.8rem; color: #388E3C; font-weight: bold; text-align: center; margin: 12px 0; }
+#congrats { display: none; font-size: 1.3rem; color: #388E3C; font-weight: bold; text-align: center; margin: 12px 0; }
 </style>
 </head>
 <body>
@@ -162,7 +175,7 @@ button { padding: 14px 32px; border: none; border-radius: 6px; font-size: 1.5rem
 </div>
 
 <!-- 단일 IME 입력 (한국어 자음 손실 방지) -->
-<input id="ime-input" type="text" inputmode="text" autocomplete="off">
+<input id="ime-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="빈칸을 탭한 뒤 입력하세요">
 
 <script>
 const APP_URL = "https://kiwili5820.github.io/wordcross/SportsC/chap1/";
@@ -292,7 +305,7 @@ let composing = false;
 
 imeInput.addEventListener("compositionstart", () => {
   composing = true;
-  imeInput.value = "";
+  // value는 건드리지 않음 — 모바일 IME 흐름 보존
 });
 
 imeInput.addEventListener("compositionupdate", e => {
@@ -321,10 +334,10 @@ imeInput.addEventListener("compositionend", e => {
   }
 });
 
-imeInput.addEventListener("input", () => {
-  // compositionend 이후 input 이벤트 중복 방지
-  if (composing) return;
-  const ch = [...imeInput.value][0] || "";
+imeInput.addEventListener("input", e => {
+  // composing 플래그와 브라우저 native isComposing 모두 체크 (모바일 IME 대응)
+  if (composing || e.isComposing) return;
+  const ch = [...(e.data || imeInput.value)][0] || "";
   imeInput.value = "";
   if (!ch || !activeCell) return;
   const [r, c] = activeCell.split(",").map(Number);
