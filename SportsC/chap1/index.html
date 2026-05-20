@@ -146,7 +146,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v11 · 05/20</div>
+<div id="ver">v12 · 05/20</div>
 <div id="debug-panel"></div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
@@ -271,6 +271,11 @@ for (let r = 0; r < PUZZLE.rows; r++) {
       charSpan.className = "cell-char";
       div.appendChild(charSpan);
 
+      // touchstart에서 focus() 호출 — iOS Safari는 이 시점만 키보드를 허용
+      div.addEventListener("touchstart", () => {
+        imeInput.focus();
+        dbg(`touchstart cell(${r},${c})`);
+      }, { passive: true });
       div.addEventListener("click", () => activateCell(r, c));
     }
     grid.appendChild(div);
@@ -290,6 +295,7 @@ function removeFocused(cellKey) {
 // ── 셀 활성화 ────────────────────────────────────────
 function activateCell(r, c) {
   const k = `${r},${c}`;
+  dbg(`activateCell(${r},${c})`);
   if (!cellMap[k]) return;
 
   removeFocused(activeCell);
@@ -310,6 +316,7 @@ function activateCell(r, c) {
 
   imeInput.value = "";
   imeInput.focus();
+  dbg(`focus() called`);
 }
 
 // ── 디버그 ───────────────────────────────────────────
@@ -330,6 +337,8 @@ function dbg(msg) {
 // ── 단일 IME 입력 ────────────────────────────────────
 const imeInput = document.getElementById("ime-input");
 let composing = false;
+imeInput.addEventListener("focus", () => dbg("★ INPUT FOCUSED"));
+imeInput.addEventListener("blur",  () => dbg("✕ INPUT BLURRED"));
 
 imeInput.addEventListener("compositionstart", () => {
   composing = true;
