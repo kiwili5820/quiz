@@ -146,7 +146,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v13 · 05/20</div>
+<div id="ver">v14 · 05/20</div>
 <div id="debug-panel"></div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
@@ -298,6 +298,15 @@ function activateCell(r, c) {
   dbg(`activateCell(${r},${c})`);
   if (!cellMap[k]) return;
 
+  // 다른 셀로 이동 시 iOS 조합 중인 글자 확정
+  if (activeCell && activeCell !== k && imeInput.value) {
+    const pending = [...imeInput.value][0];
+    if (pending) {
+      const [pr, pc] = activeCell.split(",").map(Number);
+      setChar(pr, pc, pending);
+    }
+  }
+
   removeFocused(activeCell);
 
   if (activeCell === k && dirMap[k].size > 1) {
@@ -364,7 +373,6 @@ imeInput.addEventListener("compositionupdate", e => {
 
 imeInput.addEventListener("compositionend", e => {
   composing = false;
-  // iOS에서 e.data가 null/빈값인 경우 imeInput.value 마지막 글자로 fallback
   const dataChar = [...(e.data || "")][0] || "";
   const valChar  = [...imeInput.value].pop() || "";
   const ch = dataChar || valChar;
@@ -373,6 +381,7 @@ imeInput.addEventListener("compositionend", e => {
   if (!activeCell) return;
   const [r, c] = activeCell.split(",").map(Number);
   if (ch) {
+    imeInput.value = ""; // activateCell의 pending 감지 방지
     setChar(r, c, ch);
     advanceCell(r, c);
   } else {
@@ -384,15 +393,54 @@ imeInput.addEventListener("compositionend", e => {
 imeInput.addEventListener("input", e => {
   dbg(`input composing=${composing} isComp=${e.isComposing} data="${e.data}" val="${imeInput.value}"`);
   if (composing || e.isComposing) return;
-  const ch = [...(e.data || imeInput.value)][0] || "";
-  imeInput.value = "";
-  if (!ch || !activeCell) return;
+  if (!activeCell) { imeInput.value = ""; return; }
+
+  const chars = [...imeInput.value];
+
+  if (chars.length === 0) {
+    // Backspace로 value가 비었을 때 셀 미리보기 복원
+    const [r, c] = activeCell.split(",").map(Number);
+    const span = getCellChar(r, c);
+    if (span) span.textContent = cellValues[`${r},${c}`] || "";
+    return;
+  }
+
+  if (chars.length >= 2) {
+    // 첫 글자 확정, 나머지는 다음 셀에서 계속 조합
+    const committed = chars[0];
+    const remaining = chars.slice(1).join("");
+    const [r, c] = activeCell.split(",").map(Number);
+    imeInput.value = ""; // advanceCell→activateCell이 pending 재감지 안 하도록
+    setChar(r, c, committed);
+    advanceCell(r, c);
+    if (remaining && activeCell) {
+      imeInput.value = remaining;
+      const [nr, nc] = activeCell.split(",").map(Number);
+      const span = getCellChar(nr, nc);
+      if (span) span.textContent = remaining;
+    }
+    dbg(`  committed="${committed}" remaining="${remaining}"`);
+    return;
+  }
+
+  // 글자 1개 – 조합 중인지 확인
+  const ch = chars[0];
   const code = ch.codePointAt(0);
   const isKorean = (code >= 0xAC00 && code <= 0xD7A3) ||
                    (code >= 0x1100 && code <= 0x11FF) ||
                    (code >= 0x3131 && code <= 0x318E);
   dbg(`  isKorean=${isKorean} ch="${ch}"`);
-  if (isKorean) return;
+
+  if (isKorean) {
+    // iOS 조합 중 – 셀에 미리보기, value는 유지 (iOS가 계속 조합하도록)
+    const [r, c] = activeCell.split(",").map(Number);
+    const span = getCellChar(r, c);
+    if (span) span.textContent = ch;
+    return;
+  }
+
+  // 비한국어(영어·숫자 등) – 즉시 확정
+  imeInput.value = "";
   const [r, c] = activeCell.split(",").map(Number);
   setChar(r, c, ch);
   advanceCell(r, c);
@@ -401,6 +449,7 @@ imeInput.addEventListener("input", e => {
 imeInput.addEventListener("keydown", e => {
   if (composing || !activeCell) return;
   if (e.key === "Backspace") {
+    if (imeInput.value) return; // iOS가 value 안에서 처리 (input 이벤트로 반영됨)
     const [r, c] = activeCell.split(",").map(Number);
     const k = `${r},${c}`;
     if (cellValues[k]) {
