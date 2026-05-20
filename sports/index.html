@@ -90,29 +90,35 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 .cell.wrong .cell-char { color: #c62828; }
 .cell-dir { position: absolute; bottom: 2px; right: 3px; font-size: 0.45rem; color: #1976D2; pointer-events: none; line-height: 1; }
 
-/* 단어 입력 제어 바 — form 태그 스타일 대응을 위해 width 100% 적용 */
+/* 단어 입력 제어 바 */
 .word-input-container {
   width: 100%; display: none; background: #F5F5F5; border: 2px solid #1976D2; border-radius: 8px;
-  padding: 12px; margin-bottom: 16px; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 12px; margin-bottom: 16px; flex-direction: column; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .word-input-container.active { display: flex; }
-.word-info-label { font-size: 1rem; font-weight: bold; color: #1976D2; }
-.word-input-row { display: flex; gap: 8px; width: 100%; }
+.word-info-label { font-size: 0.95rem; font-weight: bold; color: #1976D2; }
+.word-input-row { display: flex; gap: 8px; width: 100%; align-items: center; }
 .word-input-row input {
-  flex: 1; padding: 10px 14px; border: 1px solid #bbb; border-radius: 6px; font-size: 1.1rem;
-  font-family: 'Paperlogy', sans-serif; outline: none;
+  flex: 1; padding: 10px 12px; border: 1px solid #bbb; border-radius: 6px; font-size: 1.1rem;
+  font-family: 'Paperlogy', sans-serif; outline: none; min-width: 0; /* flex box 안에서 잘림 방지 */
 }
 .word-input-row input:focus { border-color: #1976D2; box-shadow: 0 0 0 2px rgba(25,118,210,0.2); }
-.btn-word-submit { background: #1976D2; color: #fff; padding: 10px 18px; font-size: 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+.btn-word-submit {
+  background: #1976D2; color: #fff; padding: 10px 16px; font-size: 1rem; border-radius: 6px;
+  border: none; cursor: pointer; font-weight: bold; flex-shrink: 0; /* 버튼이 찌그러지지 않도록 고정 */
+}
 
-/* 모바일 전용 하단 고정 스타일 */
+/* 모바일 전용 하단 고정 스타일 — 여백 및 안전구역(Safe Area) 조절 */
 @media (max-width: 768px) {
   .word-input-container.active {
     position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
     margin-bottom: 0; border-radius: 0; border-left: none; border-right: none; border-bottom: none;
-    background: #EEF4FF; z-index: 9999; padding: 10px 16px;
+    background: #EEF4FF; z-index: 9999; 
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); /* 아이폰 하단 홈 바 영역 대응 */
   }
-  body { padding-bottom: 110px; }
+  .word-input-row input { padding: 8px 10px; font-size: 1rem; }
+  .btn-word-submit { padding: 8px 14px; font-size: 0.95rem; }
+  body { padding-bottom: 95px; } /* 하단 고정 바 높이만큼 하단 여백 축소 */
 }
 
 /* 하단 제어 버튼 */
@@ -127,7 +133,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v23_index · 05/20</div>
+<div id="ver">v24_index · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -308,11 +314,11 @@ function openInputBar(word) {
     guideString += (cellValues[`${wr},${wc}`] || " _ ");
   }
 
-  wordInfoLabel.textContent = `[${word.id}번 ${dirText} 열쇠] 총 ${len}글자 (현재상태: ${guideString})`;
+  wordInfoLabel.textContent = `[${word.id}번 ${dirText}] 총 ${len}글자 (현재: ${guideString})`;
   
   wordTextInput.maxLength = len;
   wordTextInput.value = ""; 
-  wordTextInput.placeholder = "정답 또는 빈칸에 들어갈 글자 입력";
+  wordTextInput.placeholder = "정답 또는 글자 입력";
   
   wordTextInput.focus();
 }
@@ -351,7 +357,7 @@ function highlightWordAndHint(word, currentKey) {
 
 // ── 모바일/PC 통합 전송(Submit) 핸들러 ──────────────────────
 function handleFormSubmit(e) {
-  e.preventDefault(); // 실제 페이지가 새로고침되는 현상 방지
+  e.preventDefault(); 
   submitWord();
 }
 
@@ -399,7 +405,6 @@ function submitWord() {
   grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
   wordInputBar.classList.remove("active");
   
-  // 모바일 입력 후 키보드가 자연스럽게 닫히도록 blur 처리
   wordTextInput.blur();
   wordTextInput.value = "";
   selectedWord = null;
