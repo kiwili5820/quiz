@@ -264,4 +264,222 @@ for (let r = 0; r < PUZZLE.rows; r++) {
 }
 
 function getCell(r, c) { return grid.querySelector(`[data-key="${r},${c}"]`); }
-function getCellChar(r, c) { const
+function getCellChar(r, c) { const d = getCell(r,c); return d ? d.querySelector(".cell-char") : null; }
+
+// ── 단어 선택 및 활성화 제어 ─────────────────────────────
+function handleCellClick(r, c) {
+  const k = `${r},${c}`;
+  if (!cellMap[k]) return;
+
+  if (activeCell === k && dirMap[k].size > 1) {
+    activeDir = activeDir === "across" ? "down" : "across";
+  } else if (activeCell !== k) {
+    activeCell = k;
+    activeDir = dirMap[k].has("across") ? "across" : "down";
+  }
+
+  const word = PUZZLE.words.find(w => {
+    if (w.direction !== activeDir) return false;
+    const len = [...w.answer].length;
+    for (let i = 0; i < len; i++) {
+      const wr = w.direction === "across" ? w.row     : w.row + i;
+      const wc = w.direction === "across" ? w.col + i : w.col;
+      if (wr === r && wc === c) return true;
+    }
+    return false;
+  });
+
+  if (word) {
+    selectedWord = word;
+    highlightWordAndHint(word, k);
+    openInputBar(word); 
+  }
+}
+
+// ── 단어 단위 입력창 개설 및 가이드 바인딩 ────────────────────
+function openInputBar(word) {
+  wordInputBar.classList.add("active");
+  const dirText = word.direction === "across" ? "가로" : "세로";
+  const len = [...word.answer].length;
+  
+  let guideString = "";
+  for (let i = 0; i < len; i++) {
+    const wr = word.direction === "across" ? word.row     : word.row + i;
+    const wc = word.direction === "across" ? word.col + i : word.col;
+    guideString += (cellValues[`${wr},${wc}`] || " _ ");
+  }
+
+  wordInfoLabel.textContent = `[${word.id}번 ${dirText} 열쇠] 총 ${len}글자 (현재상태: ${guideString})`;
+  
+  wordTextInput.maxLength = len;
+  wordTextInput.value = ""; 
+  wordTextInput.placeholder = "정답 또는 빈칸에 들어갈 글자 입력";
+  
+  wordTextInput.focus();
+}
+
+// ── 격자 및 힌트 리스트 시각화 연동 ───────────────────────
+function highlightWordAndHint(word, currentKey) {
+  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+  document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+
+  const len = [...word.answer].length;
+  for (let i = 0; i < len; i++) {
+    const hr = word.direction === "across" ? word.row     : word.row + i;
+    const hc = word.direction === "across" ? word.col + i : word.col;
+    const hk = `${hr},${hc}`;
+    const d = getCell(hr, hc);
+    if (d) {
+      if (hk === currentKey) d.classList.add("focused");
+      else d.classList.add("selected");
+    }
+  }
+
+  const hintItems = document.querySelectorAll(`#hint-${word.direction} li`);
+  hintItems.forEach(li => {
+    if (li.querySelector("span")?.textContent === `${word.id}.`) {
+      li.classList.add("active-hint");
+      li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+  if (dirMap[currentKey] && dirMap[currentKey].size > 1) {
+    const s = getCell(currentKey.split(",")[0], currentKey.split(",")[1])?.querySelector(".cell-dir");
+    if (s) s.textContent = activeDir === "across" ? "→" : "↓";
+  }
+}
+
+// ── 클릭한 위치부터 순서대로 글자 채우기 ─────────────────────
+function submitWord() {
+  if (!selectedWord || !activeCell) return;
+
+  const chars = [...wordTextInput.value];
+  if (chars.length === 0) return; 
+
+  const [clickR, clickC] = activeCell.split(",").map(Number);
+  let startIndex = 0;
+  if (selectedWord.direction === "across") {
+    startIndex = clickC - selectedWord.col;
+  } else {
+    startIndex = clickR - selectedWord.row;
+  }
+
+  const wordLen = [...selectedWord.answer].length;
+  let charIdx = 0;
+
+  for (let i = startIndex; i < wordLen; i++) {
+    if (charIdx >= chars.length) break; 
+
+    const r = selectedWord.direction === "across" ? selectedWord.row     : selectedWord.row + i;
+    const c = selectedWord.direction === "across" ? selectedWord.col + i : selectedWord.col;
+    const k = `${r},${c}`;
+
+    const d = getCell(r, c);
+    const span = getCellChar(r, c);
+    
+    if (d && span) {
+      const ch = chars[charIdx++];
+      if (ch !== " ") { 
+        cellValues[k] = ch;
+        span.textContent = ch;
+        span.style.color = "";
+        d.classList.remove("correct", "wrong");
+      }
+    }
+  }
+
+  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+  document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+  grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+  wordInputBar.classList.remove("active");
+  
+  wordTextInput.value = "";
+  selectedWord = null;
+  activeCell = null;
+}
+
+// ── PC 사용자를 위한 키보드 편의성 연동 ────────────────────
+wordTextInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitWord();
+  }
+});
+
+// ── 채점 및 정답 유효성 확인 ───────────────────────────
+function checkAnswers() {
+  wordInputBar.classList.remove("active");
+  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+  
+  selectedWord = null;
+  activeCell = null;
+
+  let allCorrect = true;
+  Object.entries(cellMap).forEach(([k, data]) => {
+    const [r, c] = k.split(",").map(Number);
+    const d    = getCell(r, c);
+    const span = getCellChar(r, c);
+    if (!d || !span) return;
+
+    d.classList.remove("selected", "focused", "correct", "wrong");
+
+    const val = cellValues[k] || "";
+    if (val === data.answer) {
+      d.classList.add("correct");
+      span.style.color = "";
+    } else {
+      d.classList.add("wrong");
+      span.textContent = data.answer;
+      span.style.color = "#c62828"; 
+      cellValues[k] = data.answer;
+      allCorrect = false;
+    }
+  });
+
+  document.getElementById("congrats").style.display = allCorrect ? "block" : "none";
+}
+
+// ── 판 비우기 및 상태 리셋 ──────────────────────────────
+function resetPuzzle() {
+  wordInputBar.classList.remove("active");
+  selectedWord = null;
+  activeCell = null;
+
+  Object.keys(cellMap).forEach(k => {
+    const [r, c] = k.split(",").map(Number);
+    const d    = getCell(r, c);
+    const span = getCellChar(r, c);
+    delete cellValues[k];
+    if (span) { span.textContent = ""; span.style.color = ""; }
+    if (d)    d.classList.remove("selected", "focused", "correct", "wrong");
+  });
+
+  document.getElementById("congrats").style.display = "none";
+}
+
+// ── 힌트 목록 초기 렌더링 ──────────────────────────────
+const acrossUl = document.getElementById("hint-across");
+const downUl   = document.getElementById("hint-down");
+const seen     = new Set();
+
+PUZZLE.words.forEach(w => {
+  const key = `${w.id}-${w.direction}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  const li = document.createElement("li");
+  li.innerHTML = `<span>${w.id}.</span>${w.hint.replace(/□/g, '<span class="blank-box">□</span>')}`;
+  (w.direction === "across" ? acrossUl : downUl).appendChild(li);
+});
+
+// ── QR 코드 빌드 ──────────────────────────────────────
+if (APP_URL !== "YOUR_DEPLOY_URL_HERE") {
+  new QRCode(document.getElementById("qrcode"), { text: APP_URL, width: 400, height: 400 });
+} else {
+  const qd = document.getElementById("qrcode");
+  qd.style.cssText = "width:70vh;height:70vh;max-width:100%;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:1rem;text-align:center;padding:16px;";
+  qd.textContent = "배포 URL 설정 후 QR 생성됩니다";
+}
+</script>
+</body>
+</html>
