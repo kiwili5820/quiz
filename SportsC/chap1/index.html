@@ -142,7 +142,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v21 · 05/20</div>
+<div id="ver">v22 · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -357,7 +357,7 @@ const wordLabel = document.getElementById("word-label");
 
 function confirmInput() {
   distributeInput(imeInput.value);
-  imeInput.blur();
+  imeInput.focus(); // 포커스 유지 → 다음 셀 첫 탭에 바로 activateCell 실행
 }
 
 imeInput.addEventListener("compositionend", () => {
