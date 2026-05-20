@@ -97,33 +97,25 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   font-size: 0.45rem; color: #1976D2; pointer-events: none; line-height: 1;
 }
 
-/* 하단 입력 영역 */
+/* 하단 입력 영역 — PC·모바일 공통 */
 #word-label {
   position: fixed; bottom: 50px; left: 0; width: 100%;
   background: #EEF4FF; border-top: 1px solid #90CAF9;
   padding: 4px 16px;
   font-family: 'Paperlogy', sans-serif; font-size: 0.85rem; color: #1976D2;
-  z-index: 100; display: none;
+  z-index: 100;
 }
-/* PC: 투명 입력 캡처용 */
 #ime-input {
   position: fixed; bottom: 0; left: 0;
-  width: 1px; height: 1px; opacity: 0.01;
-  border: none; outline: none; font-size: 16px; background: transparent;
+  width: 100%; height: 50px;
+  background: #EEF4FF;
+  border: none; border-top: 2px solid #1976D2;
+  outline: none;
+  padding: 0 20px;
+  font-family: 'Paperlogy', sans-serif;
+  font-size: 18px; color: #333;
 }
-/* 모바일: 가시적 입력 바 */
-@media (max-width: 768px) {
-  #word-label { display: block; }
-  #ime-input {
-    width: 100%; height: 50px; opacity: 1;
-    background: #EEF4FF;
-    border-top: 2px solid #1976D2;
-    padding: 0 20px;
-    font-family: 'Paperlogy', sans-serif;
-    font-size: 18px; color: #333;
-  }
-  body { padding-bottom: 100px; }
-}
+body { padding-bottom: 100px; }
 
 /* 버튼 */
 .btn-row { display: flex; gap: 8px; margin-bottom: 4px; }
@@ -140,7 +132,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v17 · 05/20</div>
+<div id="ver">v18 · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
