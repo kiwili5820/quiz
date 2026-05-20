@@ -131,10 +131,14 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 
 /* 축하 메시지 */
 #congrats { display: none; font-size: 1.3rem; color: #388E3C; font-weight: bold; text-align: center; margin: 12px 0; }
+
+/* 버전 표시 */
+#ver { position: fixed; top: 6px; right: 10px; font-size: 0.65rem; color: #bbb; pointer-events: none; z-index: 999; }
 </style>
 </head>
 <body>
 
+<div id="ver">v10 · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -146,7 +150,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 <!-- QR 탭 -->
 <div id="panel-qr" class="tab-content">
   <div id="qrcode"></div>
-  <p class="qr-label">QR 코드를 스캔하여 접속하세요</p>
+  <p class="qr-label">QR 코드를 스캔하여 접속하세요.</p>
 </div>
 
 <!-- 퀴즈 탭 -->
@@ -175,7 +179,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </div>
 
 <!-- 단일 IME 입력 (한국어 자음 손실 방지) -->
-<input id="ime-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="빈칸을 탭한 뒤 입력하세요">
+<input id="ime-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="빈칸을 탭한 뒤 입력하세요.">
 
 <script>
 const APP_URL = "https://kiwili5820.github.io/wordcross/SportsC/chap1/";
