@@ -103,16 +103,27 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   width: 100%; height: 2px; opacity: 0.01;
   border: none; outline: none; font-size: 16px; background: transparent;
 }
-/* 모바일: 화면 하단에 실제로 보이는 입력 바 */
+#ime-confirm { display: none; }
+/* 모바일: 입력 바 + ✓ 확인 버튼 */
 @media (max-width: 768px) {
   #ime-input {
+    width: calc(100% - 56px);
     height: 50px; opacity: 1;
     background: #EEF4FF;
     border-top: 2px solid #1976D2;
     border-left: none; border-right: none; border-bottom: none;
-    padding: 0 20px;
+    padding: 0 16px;
     font-family: 'Paperlogy', sans-serif;
-    font-size: 16px; color: #333;
+    font-size: 18px; color: #333;
+  }
+  #ime-confirm {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; bottom: 0; right: 0;
+    width: 56px; height: 50px;
+    background: #1976D2; color: #fff;
+    font-size: 24px; font-weight: bold;
+    border: none; border-top: 2px solid #0D47A1;
+    cursor: pointer; touch-action: manipulation;
   }
   body { padding-bottom: 58px; }
 }
@@ -146,7 +157,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v14 · 05/20</div>
+<div id="ver">v15 · 05/20</div>
 <div id="debug-panel"></div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
@@ -187,8 +198,9 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 
 </div>
 
-<!-- 단일 IME 입력 (한국어 자음 손실 방지) -->
-<input id="ime-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="빈칸을 탭한 뒤 입력하세요.">
+<!-- 단일 IME 입력 + 모바일 확인 버튼 -->
+<input id="ime-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="여기를 탭한 뒤 입력 →">
+<button id="ime-confirm" type="button">✓</button>
 
 <script>
 const APP_URL = "https://kiwili5820.github.io/wordcross/SportsC/chap1/";
@@ -271,9 +283,8 @@ for (let r = 0; r < PUZZLE.rows; r++) {
       charSpan.className = "cell-char";
       div.appendChild(charSpan);
 
-      // touchstart에서 focus() 호출 — iOS Safari는 이 시점만 키보드를 허용
+      // 모바일: 키보드는 사용자가 하단 입력창을 탭해서 직접 열기
       div.addEventListener("touchstart", () => {
-        imeInput.focus();
         dbg(`touchstart cell(${r},${c})`);
       }, { passive: true });
       div.addEventListener("click", () => activateCell(r, c));
@@ -293,19 +304,12 @@ function removeFocused(cellKey) {
 }
 
 // ── 셀 활성화 ────────────────────────────────────────
+const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+
 function activateCell(r, c) {
   const k = `${r},${c}`;
   dbg(`activateCell(${r},${c})`);
   if (!cellMap[k]) return;
-
-  // 다른 셀로 이동 시 iOS 조합 중인 글자 확정
-  if (activeCell && activeCell !== k && imeInput.value) {
-    const pending = [...imeInput.value][0];
-    if (pending) {
-      const [pr, pc] = activeCell.split(",").map(Number);
-      setChar(pr, pc, pending);
-    }
-  }
 
   removeFocused(activeCell);
 
@@ -324,8 +328,10 @@ function activateCell(r, c) {
   if (d) d.classList.add("focused");
 
   imeInput.value = "";
-  imeInput.focus();
-  dbg(`focus() called`);
+  if (!isMobile()) {
+    imeInput.focus(); // PC: 자동 포커스
+    dbg(`focus() called`);
+  }
 }
 
 // ── 디버그 ───────────────────────────────────────────
@@ -380,8 +386,19 @@ imeInput.addEventListener("compositionend", e => {
 
   if (!activeCell) return;
   const [r, c] = activeCell.split(",").map(Number);
+
+  if (isMobile()) {
+    // 모바일: ✓ 버튼으로 확정 — 미리보기만 표시
+    if (ch) {
+      const span = getCellChar(r, c);
+      if (span) span.textContent = ch;
+    }
+    return;
+  }
+
+  // PC: composition 완료 시 자동 진행
   if (ch) {
-    imeInput.value = ""; // activateCell의 pending 감지 방지
+    imeInput.value = "";
     setChar(r, c, ch);
     advanceCell(r, c);
   } else {
@@ -395,51 +412,26 @@ imeInput.addEventListener("input", e => {
   if (composing || e.isComposing) return;
   if (!activeCell) { imeInput.value = ""; return; }
 
-  const chars = [...imeInput.value];
-
-  if (chars.length === 0) {
-    // Backspace로 value가 비었을 때 셀 미리보기 복원
-    const [r, c] = activeCell.split(",").map(Number);
-    const span = getCellChar(r, c);
-    if (span) span.textContent = cellValues[`${r},${c}`] || "";
-    return;
-  }
-
-  if (chars.length >= 2) {
-    // 첫 글자 확정, 나머지는 다음 셀에서 계속 조합
-    const committed = chars[0];
-    const remaining = chars.slice(1).join("");
-    const [r, c] = activeCell.split(",").map(Number);
-    imeInput.value = ""; // advanceCell→activateCell이 pending 재감지 안 하도록
-    setChar(r, c, committed);
-    advanceCell(r, c);
-    if (remaining && activeCell) {
-      imeInput.value = remaining;
-      const [nr, nc] = activeCell.split(",").map(Number);
-      const span = getCellChar(nr, nc);
-      if (span) span.textContent = remaining;
+  if (isMobile()) {
+    // 모바일: ✓ 버튼으로 확정 — 입력창 현재 값을 셀에 미리보기만 표시
+    const ch = [...imeInput.value][0] || "";
+    if (ch) {
+      const [r, c] = activeCell.split(",").map(Number);
+      const span = getCellChar(r, c);
+      if (span) span.textContent = ch;
     }
-    dbg(`  committed="${committed}" remaining="${remaining}"`);
     return;
   }
 
-  // 글자 1개 – 조합 중인지 확인
-  const ch = chars[0];
+  // PC: 비한국어(영어·숫자) 자동 확정 — 한국어는 compositionend에서 처리
+  const ch = [...imeInput.value][0] || "";
+  if (!ch) return;
   const code = ch.codePointAt(0);
   const isKorean = (code >= 0xAC00 && code <= 0xD7A3) ||
                    (code >= 0x1100 && code <= 0x11FF) ||
                    (code >= 0x3131 && code <= 0x318E);
   dbg(`  isKorean=${isKorean} ch="${ch}"`);
-
-  if (isKorean) {
-    // iOS 조합 중 – 셀에 미리보기, value는 유지 (iOS가 계속 조합하도록)
-    const [r, c] = activeCell.split(",").map(Number);
-    const span = getCellChar(r, c);
-    if (span) span.textContent = ch;
-    return;
-  }
-
-  // 비한국어(영어·숫자 등) – 즉시 확정
+  if (isKorean) return;
   imeInput.value = "";
   const [r, c] = activeCell.split(",").map(Number);
   setChar(r, c, ch);
@@ -447,18 +439,39 @@ imeInput.addEventListener("input", e => {
 });
 
 imeInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && isMobile()) {
+    e.preventDefault();
+    confirmInput();
+    return;
+  }
   if (composing || !activeCell) return;
   if (e.key === "Backspace") {
-    if (imeInput.value) return; // iOS가 value 안에서 처리 (input 이벤트로 반영됨)
+    if (imeInput.value) return; // value 있으면 키보드가 직접 처리
     const [r, c] = activeCell.split(",").map(Number);
     const k = `${r},${c}`;
-    if (cellValues[k]) {
-      setChar(r, c, "");
-    } else {
-      retreatCell(r, c);
-    }
+    if (cellValues[k]) { setChar(r, c, ""); }
+    else { retreatCell(r, c); }
   }
 });
+
+// ── 모바일 확인 버튼 ──────────────────────────────────
+function confirmInput() {
+  if (!activeCell) return;
+  const ch = [...imeInput.value][0] || "";
+  imeInput.value = "";
+  if (!ch) return;
+  dbg(`confirm ch="${ch}"`);
+  const [r, c] = activeCell.split(",").map(Number);
+  setChar(r, c, ch);
+  advanceCell(r, c);
+  imeInput.focus(); // 키보드 유지
+}
+const imeConfirm = document.getElementById("ime-confirm");
+imeConfirm.addEventListener("touchstart", (e) => {
+  e.preventDefault(); // click 중복 방지
+  confirmInput();
+}, { passive: false });
+imeConfirm.addEventListener("click", confirmInput);
 
 // ── 문자 저장 ────────────────────────────────────────
 function setChar(r, c, ch) {
