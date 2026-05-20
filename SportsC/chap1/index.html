@@ -305,7 +305,7 @@ let composing = false;
 
 imeInput.addEventListener("compositionstart", () => {
   composing = true;
-  // value는 건드리지 않음 — 모바일 IME 흐름 보존
+  imeInput.value = ""; // 새 조합 직전 클리어 — 이전 조합 잔여값 제거 (안전 시점)
 });
 
 imeInput.addEventListener("compositionupdate", e => {
@@ -319,7 +319,8 @@ imeInput.addEventListener("compositionupdate", e => {
 imeInput.addEventListener("compositionend", e => {
   composing = false;
   const ch = [...(e.data || "")][0] || "";
-  imeInput.value = "";
+  // value 클리어하지 않음 — iOS는 compositionend 후 IME가 value를 참조함
+  // (다음 compositionstart에서 클리어)
 
   if (!activeCell) return;
   const [r, c] = activeCell.split(",").map(Number);
@@ -335,11 +336,17 @@ imeInput.addEventListener("compositionend", e => {
 });
 
 imeInput.addEventListener("input", e => {
-  // composing 플래그와 브라우저 native isComposing 모두 체크 (모바일 IME 대응)
   if (composing || e.isComposing) return;
-  const ch = [...imeInput.value][0] || "";  // e.data 대신 value 사용 (compositionend 후 이중처리 방지)
+  const ch = [...(e.data || imeInput.value)][0] || "";
   imeInput.value = "";
   if (!ch || !activeCell) return;
+  // 한국어 문자는 compositionend에서만 처리 — input 이벤트의 한국어는 무시
+  // (compositionend 직후 발생하는 input의 이중처리 방지 + jamo 낱개 입력 방지)
+  const code = ch.codePointAt(0);
+  const isKorean = (code >= 0xAC00 && code <= 0xD7A3) || // 완성 음절
+                   (code >= 0x1100 && code <= 0x11FF) ||  // 한글 자모
+                   (code >= 0x3131 && code <= 0x318E);    // 호환 자모
+  if (isKorean) return;
   const [r, c] = activeCell.split(",").map(Number);
   setChar(r, c, ch);
   advanceCell(r, c);
@@ -401,8 +408,6 @@ function advanceCell(r, c) {
 
   const nd = getCell(nr, nc);
   if (nd) nd.classList.add("focused");
-
-  imeInput.value = "";
 }
 
 function retreatCell(r, c) {
@@ -421,8 +426,6 @@ function retreatCell(r, c) {
 
   const nd = getCell(nr, nc);
   if (nd) nd.classList.add("focused");
-
-  imeInput.value = "";
 }
 
 // ── 방향 표시 ────────────────────────────────────────
