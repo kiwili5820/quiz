@@ -305,7 +305,7 @@ let composing = false;
 
 imeInput.addEventListener("compositionstart", () => {
   composing = true;
-  imeInput.value = ""; // 새 조합 직전 클리어 — 이전 조합 잔여값 제거 (안전 시점)
+  // value 건드리지 않음 — iOS는 이 시점에 이미 키보드가 값을 쓰기 시작함
 });
 
 imeInput.addEventListener("compositionupdate", e => {
