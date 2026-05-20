@@ -68,7 +68,7 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 .lock-img { width: 1.3em; height: 1.3em; flex-shrink: 0; vertical-align: middle; object-fit: contain; }
 
 /* 격자 */
-.grid-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+.grid-wrap { display: flex; justify-content: center; margin-bottom: 14px; scroll-margin-top: 20px; }
 .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .cell {
   width: 11vmin; height: 11vmin;
@@ -98,8 +98,6 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 }
 .word-input-container.active { display: flex; }
 .word-info-label { font-size: 0.95rem; font-weight: bold; color: #1976D2; }
-/* 천지인 입력 대응: 키패드가 올라와도 힌트를 볼 수 있게 보완된 힌트 요약창 */
-.word-hint-summary { font-size: 0.85rem; color: #555; background: #fff; padding: 6px; border-radius: 4px; border: 1px solid #ddd; line-height: 1.4; max-height: 50px; overflow-y: auto; }
 
 .word-input-row { display: flex; gap: 8px; width: 100%; align-items: center; }
 .word-input-row input {
@@ -112,7 +110,7 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   border: none; cursor: pointer; font-weight: bold; flex-shrink: 0;
 }
 
-/* 모바일 전용 하단 고정 스타일 (천지인 키패드 최적화) */
+/* 모바일 전용 하단 고정 스타일 */
 @media (max-width: 768px) {
   .word-input-container.active {
     position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
@@ -122,7 +120,7 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   }
   .word-input-row input { padding: 8px 10px; font-size: 1rem; }
   .btn-word-submit { padding: 8px 14px; font-size: 0.95rem; }
-  body { padding-bottom: 140px; } /* 입력 바 + 요약 레이아웃 크기만큼 하단 여백 확대 */
+  body { padding-bottom: 100px; } /* 중복 힌트 창 제거로 하단 여백 다시 축소 최적화 */
 }
 
 /* 하단 제어 버튼 */
@@ -137,7 +135,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v28_index · 05/20</div>
+<div id="ver">v30_index · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -163,13 +161,13 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
   <div class="grid-side">
     <form class="word-input-container" id="word-input-bar" onsubmit="handleFormSubmit(event)">
       <div class="word-info-label" id="word-info-label">단어를 선택해 주세요.</div>
-      <div class="word-hint-summary" id="word-hint-summary"></div> <div class="word-input-row">
+      <div class="word-input-row">
         <input id="word-text-input" type="text" autocomplete="off" spellcheck="false" placeholder="답안 입력" enterkeyhint="done">
         <button type="submit" class="btn-word-submit">입력</button>
       </div>
     </form>
 
-    <div class="grid-wrap">
+    <div class="grid-wrap" id="grid-wrap-focus">
       <div class="grid" id="grid"></div>
     </div>
 
@@ -241,7 +239,6 @@ let activeDir = "across";
 const grid = document.getElementById("grid");
 const wordInputBar = document.getElementById("word-input-bar");
 const wordInfoLabel = document.getElementById("word-info-label");
-const wordHintSummary = document.getElementById("word-hint-summary");
 const wordTextInput = document.getElementById("word-text-input");
 
 // ── 격자 렌더링 및 클릭 이벤트 바인딩 ──────────────────────
@@ -304,9 +301,8 @@ function handleCellClick(r, c) {
   }
 }
 
-// ── 💡 힌트 리스트 터치 핸들러 ───────────────────────────
+// ── 힌트 리스트 터치 핸들러 ───────────────────────────
 function handleHintClick(word) {
-  // 힌트를 클릭하면 해당 단어의 시작 칸을 기준으로 포커싱합니다.
   const startKey = `${word.row},${word.col}`;
   activeCell = startKey;
   activeDir = word.direction;
@@ -334,16 +330,13 @@ function openInputBar(word) {
     guideString += (cellValues[`${wr},${wc}`] || " _ ");
   }
 
+  // 💡 정보창 레이블만 깔끔하게 유지 (하단 중복 힌트 텍스트 맵핑 코드 제거)
   wordInfoLabel.textContent = `[${word.id}번 ${dirText}] 총 ${len}글자 (현재: ${guideString})`;
-  
-  // 💡 천지인 키패드로 상단 화면이 가려져도 하단 바 안에서 문제를 완벽하게 인지하도록 힌트 복사본 배치
-  wordHintSummary.textContent = `${word.id}. ${word.hint}`;
   
   wordTextInput.maxLength = len;
   wordTextInput.value = ""; 
   wordTextInput.placeholder = "정답 또는 글자 입력";
   
-  // 스크롤 연동 직후 가상 키패드 및 인풋 초점을 고정하기 위한 딜레이 조정
   setTimeout(() => {
     wordTextInput.focus();
   }, 100);
@@ -381,12 +374,10 @@ function highlightWordAndHint(word, currentKey) {
   }
 }
 
-// ── 안드로이드 '뒤로가기' 혹은 자판 외부 터치로 포커스 풀릴 때 바 닫기 ──────
+// ── 자판 외부 터치 등으로 포커스 풀릴 때 바 닫기 ──────
 wordTextInput.addEventListener('blur', () => {
-  // 입력 완료 버튼을 누르는 순간 바로 꺼지는 것을 방지하기 위해 미세한 시간차를 둠
   setTimeout(() => {
     if (document.activeElement !== wordTextInput) {
-      // 명시적으로 입력 프로세스가 끝나기 전 자판만 수동으로 닫았을 때 UI 정리
       wordInputBar.classList.remove("active");
       grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
       document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
@@ -440,16 +431,23 @@ function submitWord() {
     }
   }
 
-  // 💡 레이아웃을 깨끗하게 정리하되 브라우저 강제 점프를 막기 위해 스무스하게 초기화
-  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
-  document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
-  grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
-  wordInputBar.classList.remove("active");
-  
   wordTextInput.blur();
   wordTextInput.value = "";
-  selectedWord = null;
-  activeCell = null;
+  wordInputBar.classList.remove("active");
+
+  setTimeout(() => {
+    grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+    document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+    grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+    
+    const gridTarget = document.getElementById("grid-wrap-focus");
+    if (gridTarget) {
+      gridTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    selectedWord = null;
+    activeCell = null;
+  }, 150);
 }
 
 // ── 채점 및 정답 유효성 확인 ───────────────────────────
@@ -517,7 +515,6 @@ PUZZLE.words.forEach(w => {
   li.dataset.id = w.id;
   li.innerHTML = `<span>${w.id}.</span>${w.hint.replace(/□/g, '<span class="blank-box">□</span>')}`;
   
-  // 💡 계획했던 '힌트 터치' 이벤트 연동 추가
   li.addEventListener("click", () => handleHintClick(w));
   
   (w.direction === "across" ? acrossUl : downUl).appendChild(li);
