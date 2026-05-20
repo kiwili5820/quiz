@@ -108,14 +108,21 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   padding: 4px 14px;
   font-family: 'Paperlogy', sans-serif; font-size: 0.85rem; color: #1976D2;
 }
+#input-row { display: flex; }
 #ime-input {
-  width: 100%; height: 46px;
+  flex: 1; height: 46px;
   background: #EEF4FF;
   border: none; outline: none;
   padding: 0 14px;
   font-family: 'Paperlogy', sans-serif;
   font-size: 18px; color: #333;
-  display: block;
+}
+#input-confirm {
+  width: 56px; height: 46px; flex-shrink: 0;
+  background: #1976D2; color: #fff;
+  border: none; border-left: 2px solid #1565C0;
+  font-size: 1.2rem; cursor: pointer;
+  border-radius: 0;
 }
 
 /* 버튼 */
@@ -133,7 +140,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v19 · 05/20</div>
+<div id="ver">v20 · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -162,8 +169,11 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
     </div>
     <div id="input-area">
       <div id="word-label">빈칸을 탭하세요</div>
-      <input id="ime-input" type="text" inputmode="text"
-        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <div id="input-row">
+        <input id="ime-input" type="text" inputmode="text"
+          autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <button id="input-confirm" onclick="confirmInput()">✓</button>
+      </div>
     </div>
     <div id="congrats">🎉 정답입니다! 축하합니다! 🎉</div>
     <div class="btn-row">
@@ -343,12 +353,27 @@ function distributeInput(val) {
 const imeInput  = document.getElementById("ime-input");
 const wordLabel = document.getElementById("word-label");
 
+function confirmInput() {
+  distributeInput(imeInput.value);
+  imeInput.blur();
+}
+
 imeInput.addEventListener("compositionend", () => {
   distributeInput(imeInput.value);
 });
 
 imeInput.addEventListener("input", e => {
   if (e.isComposing) return;
+  distributeInput(imeInput.value);
+});
+
+// Enter 키 (PC) / iOS Done 키
+imeInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); confirmInput(); }
+});
+
+// iOS Done 키 → blur 발생 시 최종 확정
+imeInput.addEventListener("blur", () => {
   distributeInput(imeInput.value);
 });
 
