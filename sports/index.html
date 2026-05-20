@@ -133,7 +133,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v26_index · 05/20</div>
+<div id="ver">v27_index · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -180,7 +180,8 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </div>
 
 <script>
-const APP_URL = "https://kiwili5820.github.io/wordcross/sports/index.html";
+// 💡 요청하신 새로운 배포 URL 주소로 수정 완료
+const APP_URL = "https://kiwili5820.github.io/quiz/sports/index.html";
 
 const PUZZLE = {
   cols: 7, rows: 7,
@@ -320,7 +321,6 @@ function openInputBar(word) {
   wordTextInput.value = ""; 
   wordTextInput.placeholder = "정답 또는 글자 입력";
   
-  // 💡 스크롤 이동이 끝난 후 안정적으로 포커스를 잡도록 최상단으로 분리 및 딜레이 튜닝
   setTimeout(() => {
     wordTextInput.focus();
   }, 80);
@@ -347,9 +347,6 @@ function highlightWordAndHint(word, currentKey) {
   hintItems.forEach(li => {
     if (li.querySelector("span")?.textContent === `${word.id}.`) {
       li.classList.add("active-hint");
-      
-      // 💡 scrollIntoView 실행 시 브라우저가 스크롤 영역에 포커스를 맞추려는 성질이 있습니다.
-      // 이를 방지하기 위해 block 단위를 'nearest'로 유지하여 부드럽게 위치만 옮기도록 처리합니다.
       li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   });
