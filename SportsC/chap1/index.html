@@ -146,7 +146,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v12 · 05/20</div>
+<div id="ver">v13 · 05/20</div>
 <div id="debug-panel"></div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
@@ -323,14 +323,23 @@ function activateCell(r, c) {
 const debugPanel = document.getElementById("debug-panel");
 let debugOn = false;
 const debugLog = [];
+// iOS에서 click 이벤트가 무시되므로 touchstart 사용
+document.getElementById("ver").addEventListener("touchstart", (e) => {
+  e.stopPropagation();
+  debugOn = !debugOn;
+  debugPanel.style.display = debugOn ? "block" : "none";
+  if (debugOn) debugPanel.textContent = debugLog.join("\n") || "(대기 중)";
+}, { passive: false });
 document.getElementById("ver").addEventListener("click", () => {
   debugOn = !debugOn;
   debugPanel.style.display = debugOn ? "block" : "none";
+  if (debugOn) debugPanel.textContent = debugLog.join("\n") || "(대기 중)";
 });
 function dbg(msg) {
-  if (!debugOn) return;
   debugLog.unshift(msg);
   if (debugLog.length > 12) debugLog.pop();
+  document.title = msg; // 키보드에 가려도 탭 제목으로 확인 가능
+  if (!debugOn) return;
   debugPanel.textContent = debugLog.join("\n");
 }
 
