@@ -90,7 +90,7 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
 .cell.wrong .cell-char { color: #c62828; }
 .cell-dir { position: absolute; bottom: 2px; right: 3px; font-size: 0.45rem; color: #1976D2; pointer-events: none; line-height: 1; }
 
-/* 단어 입력 제어 바 */
+/* 단어 입력 제어 바 — form 태그 스타일 대응을 위해 width 100% 적용 */
 .word-input-container {
   width: 100%; display: none; background: #F5F5F5; border: 2px solid #1976D2; border-radius: 8px;
   padding: 12px; margin-bottom: 16px; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -103,7 +103,7 @@ h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
   font-family: 'Paperlogy', sans-serif; outline: none;
 }
 .word-input-row input:focus { border-color: #1976D2; box-shadow: 0 0 0 2px rgba(25,118,210,0.2); }
-.btn-word-submit { background: #1976D2; color: #fff; padding: 10px 18px; font-size: 1rem; border-radius: 6px; }
+.btn-word-submit { background: #1976D2; color: #fff; padding: 10px 18px; font-size: 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
 
 /* 모바일 전용 하단 고정 스타일 */
 @media (max-width: 768px) {
@@ -127,7 +127,7 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </head>
 <body>
 
-<div id="ver">v22_index · 05/20</div>
+<div id="ver">v23_index · 05/20</div>
 <h1>십자말풀이 퀴즈</h1>
 <p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
 
@@ -151,13 +151,13 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
   </div>
 
   <div class="grid-side">
-    <div class="word-input-container" id="word-input-bar">
+    <form class="word-input-container" id="word-input-bar" onsubmit="handleFormSubmit(event)">
       <div class="word-info-label" id="word-info-label">단어를 선택해 주세요.</div>
       <div class="word-input-row">
-        <input id="word-text-input" type="text" autocomplete="off" spellcheck="false" placeholder="답안 입력">
-        <button class="btn-word-submit" onclick="submitWord()">입력</button>
+        <input id="word-text-input" type="text" autocomplete="off" spellcheck="false" placeholder="답안 입력" enterkeyhint="done">
+        <button type="submit" class="btn-word-submit">입력</button>
       </div>
-    </div>
+    </form>
 
     <div class="grid-wrap">
       <div class="grid" id="grid"></div>
@@ -174,7 +174,6 @@ button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem
 </div>
 
 <script>
-// 요청하신 배포 주소로 수정 완료했습니다.
 const APP_URL = "https://kiwili5820.github.io/wordcross/sports/index.html";
 
 const PUZZLE = {
@@ -350,6 +349,12 @@ function highlightWordAndHint(word, currentKey) {
   }
 }
 
+// ── 모바일/PC 통합 전송(Submit) 핸들러 ──────────────────────
+function handleFormSubmit(e) {
+  e.preventDefault(); // 실제 페이지가 새로고침되는 현상 방지
+  submitWord();
+}
+
 // ── 클릭한 위치부터 순서대로 글자 채우기 ─────────────────────
 function submitWord() {
   if (!selectedWord || !activeCell) return;
@@ -394,18 +399,12 @@ function submitWord() {
   grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
   wordInputBar.classList.remove("active");
   
+  // 모바일 입력 후 키보드가 자연스럽게 닫히도록 blur 처리
+  wordTextInput.blur();
   wordTextInput.value = "";
   selectedWord = null;
   activeCell = null;
 }
-
-// ── PC 사용자를 위한 키보드 편의성 연동 ────────────────────
-wordTextInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    submitWord();
-  }
-});
 
 // ── 채점 및 정답 유효성 확인 ───────────────────────────
 function checkAnswers() {
