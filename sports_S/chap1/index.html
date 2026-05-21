@@ -131,9 +131,9 @@
       -webkit-user-select: none;
       transition: background 0.12s;
     }
-    .cell.start    { background: #90CAF9; }
-    .cell.found    { background: #A5D6A7; cursor: default; }
-    .cell.error    { background: #EF9A9A; }
+    .cell.selecting { background: #90CAF9; }
+    .cell.found     { background: #A5D6A7; cursor: default; }
+    .cell.error     { background: #EF9A9A; }
 
     /* ── 진행 & 버튼 ── */
     .progress {
@@ -226,9 +226,9 @@ const PUZZLE = {
 
 const DIR_VEC = { dr:{dr:1,dc:1}, dl:{dr:1,dc:-1}, ur:{dr:-1,dc:1}, ul:{dr:-1,dc:-1} };
 
-let startCell = null;
-let foundSet  = new Set();
-let foundCells = {};   // "r,c" → wordId
+let dragState  = null;   // { startRow, startCol, path }
+let foundSet   = new Set();
+let foundCells = {};     // "r,c" → wordId
 
 function key(r, c) { return `${r},${c}`; }
 
@@ -248,14 +248,13 @@ function renderGrid() {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.textContent = PUZZLE.grid[r][c];
-      const k = key(r, c);
-      if (foundCells[k] !== undefined) cell.classList.add('found');
-      if (startCell && startCell.row === r && startCell.col === c) cell.classList.add('start');
-      cell.addEventListener('touchstart', e => { e.preventDefault(); onCellClick(r, c); }, { passive: false });
-      cell.addEventListener('click', () => onCellClick(r, c));
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      if (foundCells[key(r, c)] !== undefined) cell.classList.add('found');
       el.appendChild(cell);
     }
   }
+  bindDragEvents(el);
 }
 
 function renderWordList() {
@@ -317,46 +316,91 @@ function updateProgress() {
   }
 }
 
-function cellEl(r, c) { return document.querySelector(`#grid .cell:nth-child(${r * PUZZLE.cols + c + 1})`); }
+function cellEl(r, c) { return document.querySelector(`#grid [data-row="${r}"][data-col="${c}"]`); }
 
 function flashError(cells) {
   cells.forEach(({ row, col }) => cellEl(row, col)?.classList.add('error'));
   setTimeout(() => cells.forEach(({ row, col }) => cellEl(row, col)?.classList.remove('error')), 500);
 }
 
-/* ── 셀 클릭 ── */
-function onCellClick(r, c) {
-  const k = key(r, c);
-  if (foundCells[k] !== undefined) return;
+function clearSelecting() {
+  document.querySelectorAll('#grid .selecting').forEach(el => el.classList.remove('selecting'));
+}
 
-  if (!startCell) {
-    startCell = { row: r, col: c };
-    cellEl(r, c)?.classList.add('start');
-    return;
+function highlightPath(cells) {
+  cells.forEach(({ row, col }) => cellEl(row, col)?.classList.add('selecting'));
+}
+
+function markFound(word) {
+  foundSet.add(word.id);
+  getWordCells(word).forEach(({ row, col }) => {
+    foundCells[key(row, col)] = word.id;
+    const el = cellEl(row, col);
+    if (el) { el.classList.remove('selecting', 'error'); el.classList.add('found'); }
+  });
+  document.getElementById(`wi-${word.id}`)?.classList.add('found');
+  updateProgress();
+}
+
+function getCellFromPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el || !el.dataset.row) return null;
+  return { r: +el.dataset.row, c: +el.dataset.col };
+}
+
+function calcPath(r1, c1, r2, c2) {
+  const dr = r2 - r1, dc = c2 - c1;
+  if (Math.abs(dr) !== Math.abs(dc) || dr === 0) return null;
+  const steps = Math.abs(dr);
+  const sR = dr > 0 ? 1 : -1, sC = dc > 0 ? 1 : -1;
+  return Array.from({ length: steps + 1 }, (_, i) => ({ row: r1 + i * sR, col: c1 + i * sC }));
+}
+
+/* ── 드래그 이벤트 ── */
+function bindDragEvents(gridEl) {
+  function getXY(e) {
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY };
   }
 
-  if (startCell.row === r && startCell.col === c) {
-    cellEl(r, c)?.classList.remove('start');
-    startCell = null;
-    return;
+  function onDragStart(e) {
+    const { x, y } = getXY(e);
+    const cell = getCellFromPoint(x, y);
+    if (!cell || foundCells[key(cell.r, cell.c)] !== undefined) return;
+    dragState = { startRow: cell.r, startCol: cell.c, path: [{ row: cell.r, col: cell.c }] };
+    highlightPath(dragState.path);
   }
 
-  const match = tryMatch(startCell.row, startCell.col, r, c);
-  cellEl(startCell.row, startCell.col)?.classList.remove('start');
-
-  if (match) {
-    foundSet.add(match.id);
-    getWordCells(match).forEach(({ row, col }) => {
-      foundCells[key(row, col)] = match.id;
-      const el = cellEl(row, col);
-      if (el) { el.classList.remove('start', 'error'); el.classList.add('found'); }
-    });
-    document.getElementById(`wi-${match.id}`)?.classList.add('found');
-    updateProgress();
-  } else {
-    flashError([startCell, { row: r, col: c }]);
+  function onDragMove(e) {
+    if (!dragState) return;
+    e.preventDefault();
+    const { x, y } = getXY(e);
+    const cell = getCellFromPoint(x, y);
+    if (!cell) return;
+    const path = calcPath(dragState.startRow, dragState.startCol, cell.r, cell.c);
+    clearSelecting();
+    dragState.path = path || [{ row: dragState.startRow, col: dragState.startCol }];
+    highlightPath(dragState.path);
   }
-  startCell = null;
+
+  function onDragEnd() {
+    if (!dragState) return;
+    clearSelecting();
+    const path = dragState.path;
+    dragState = null;
+    if (path.length < 2) return;
+    const first = path[0], last = path[path.length - 1];
+    const match = tryMatch(first.row, first.col, last.row, last.col);
+    if (match) markFound(match);
+    else flashError(path);
+  }
+
+  gridEl.addEventListener('mousedown',  onDragStart);
+  gridEl.addEventListener('mousemove',  onDragMove);
+  document.addEventListener('mouseup',  onDragEnd);
+  gridEl.addEventListener('touchstart', onDragStart, { passive: false });
+  gridEl.addEventListener('touchmove',  onDragMove,  { passive: false });
+  document.addEventListener('touchend', onDragEnd);
 }
 
 function tryMatch(r1, c1, r2, c2) {
@@ -381,7 +425,7 @@ function tryMatch(r1, c1, r2, c2) {
 
 /* ── 리셋 ── */
 function resetGame() {
-  startCell = null;
+  dragState = null;
   foundSet = new Set();
   foundCells = {};
   document.getElementById('celebration').style.display = 'none';
