@@ -9,11 +9,3 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
-
-# Images (source assets — 작업용 원본 이미지)
-*.png
-*.jpg
-*.jpeg
-*.gif
-# 앱 배포에 필요한 아이콘은 제외 예외
-!**/img/*.png
