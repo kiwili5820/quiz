@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스포츠과학 1단원 — 초성 낱말 찾기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px 8px;
+    }
+
+    h1 {
+      font-size: clamp(15px, 4vw, 22px);
+      text-align: center;
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    /* ── 탭 ── */
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab-btn {
+      padding: 6px 20px;
+      border: 2px solid #6d1b1b;
+      border-radius: 20px;
+      background: white;
+      color: #6d1b1b;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tab-btn.active { background: #6d1b1b; color: white; }
+    .tab-content { display: none; width: 100%; max-width: 680px; }
+    .tab-content.active { display: flex; flex-direction: column; align-items: center; }
+    @media (max-width: 768px) { .tab-qr { display: none !important; } }
+
+    /* ── 축하 ── */
+    .celebration {
+      display: none;
+      background: #E8F5E9;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2e7d32;
+      text-align: center;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    /* ── 단어 목록 ── */
+    .word-list-container { width: 100%; margin-bottom: 12px; }
+
+    .category-header {
+      background: #6d1b1b;
+      color: white;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      margin: 8px 0 4px;
+    }
+
+    .word-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 6px 8px;
+      background: white;
+      border-radius: 6px;
+      margin-bottom: 3px;
+      border: 1px solid #e0e0e0;
+    }
+    .word-item.found { background: #E8F5E9; border-color: #A5D6A7; }
+
+    .word-num { font-size: 11px; color: #aaa; min-width: 16px; padding-top: 3px; }
+
+    .word-main { flex: 1; }
+    .word-chosung { font-size: 14px; font-weight: bold; color: #333; letter-spacing: 3px; }
+    .word-answer  { font-size: 14px; font-weight: bold; color: #2e7d32; display: none; }
+    .word-item.found .word-chosung { display: none; }
+    .word-item.found .word-answer  { display: block; }
+
+    .word-hint-text {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .hint-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px;
+      flex-shrink: 0;
+      opacity: 0.65;
+    }
+    .hint-btn:hover, .hint-btn:active { opacity: 1; }
+    .hint-btn img { width: 22px; height: 22px; display: block; }
+
+    /* ── 격자 ── */
+    .grid-container { margin-bottom: 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, 8vmin);
+      grid-template-rows:    repeat(10, 8vmin);
+      border: 2px solid #444;
+      background: #444;
+      gap: 1px;
+    }
+
+    .cell {
+      width: 8vmin; height: 8vmin;
+      min-width: 30px; min-height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(10px, 3.2vmin, 20px);
+      font-weight: bold;
+      background: white;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.12s;
+    }
+    .cell.start    { background: #90CAF9; }
+    .cell.found    { background: #A5D6A7; cursor: default; }
+    .cell.error    { background: #EF9A9A; }
+
+    /* ── 진행 & 버튼 ── */
+    .progress {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .btn {
+      padding: 10px 26px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-reset { background: #e0e0e0; color: #333; }
+    .btn-reset:active { background: #bdbdbd; }
+
+    /* ── QR ── */
+    .qr-section {
+      display: flex; flex-direction: column;
+      align-items: center; padding: 20px;
+    }
+    #qrcode { background: white; padding: 16px; border-radius: 8px; }
+    .qr-label { margin-top: 16px; font-size: 20px; color: #333; }
+  </style>
+</head>
+<body>
+
+<h1>스포츠과학 1단원 — 초성 낱말 찾기</h1>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="quiz">퀴즈</button>
+  <button class="tab-btn tab-qr" data-tab="qr">QR 코드</button>
+</div>
+
+<div id="tab-quiz" class="tab-content active">
+  <div class="celebration" id="celebration">모든 단어를 찾았습니다!</div>
+  <div class="word-list-container" id="word-list"></div>
+  <div class="grid-container">
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="progress" id="progress">0 / 12 찾음</div>
+  <div class="btn-row">
+    <button class="btn btn-reset" onclick="resetGame()">다시 풀기</button>
+  </div>
+</div>
+
+<div id="tab-qr" class="tab-content">
+  <div class="qr-section">
+    <div id="qrcode"></div>
+    <div class="qr-label">QR 코드를 스캔하여 접속하세요</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const APP_URL = "https://kiwili5820.github.io/quiz/sports_S/chap1/index.html";
+
+const PUZZLE = {
+  cols: 10, rows: 10,
+  grid: [
+    ["상","마","찰","성","불","긍","상","지","스","장"],
+    ["학","업","상","안","정","획","너","포","심","득"],
+    ["성","신","주","적","역","에","츠","츠","이","인"],
+    ["체","격","일","의","적","계","포","신","량","사"],
+    ["상","탈","서","학","층","스","번","취","회","론"],
+    ["안","관","역","번","에","운","섭","계","이","서"],
+    ["인","적","성","너","트","소","동","인","사","육"],
+    ["부","체","지","의","산","리","귀","전","득","회"],
+    ["서","대","지","과","법","서","더","상","이","리"],
+    ["사","정","초","레","일","칙","탈","십","심","응"]
+  ],
+  words: [
+    { id:1,  category:"심리학", answer:"운동전이",     chosung:"ㅇㄷㅈㅇ",     hint:"앞서 연습한 결과가 뒤따르는 운동 수행이나 학습에 영향을 미치는 것", row:5, col:5, direction:"dr" },
+    { id:2,  category:"심리학", answer:"귀인이론",     chosung:"ㄱㅇㅇㄹ",     hint:"성공하거나 실패한 원인을 무엇으로 생각하느냐에 따라 정서적·행동적 반응이 달라진다고 보는 이론", row:7, col:6, direction:"ur" },
+    { id:3,  category:"심리학", answer:"서번트리더십",  chosung:"ㅅㅂㅌㄹㄷㅅ",  hint:"구성원의 의견을 존중하고 구성원의 이익과 욕구를 우선시하며 단단한 신뢰 관계를 바탕으로 팀을 이끄는 리더십", row:4, col:2, direction:"dr" },
+    { id:4,  category:"사회학", answer:"상업주의",     chosung:"ㅅㅇㅈㅇ",     hint:"스포츠는 스포츠퍼슨십, 페어플레이와 같은 긍정적 가치가 있음에도 불구하고 이것으로 인해 가치와 목적이 변화됨", row:0, col:0, direction:"dr" },
+    { id:5,  category:"사회학", answer:"스포츠계층",   chosung:"ㅅㅍㅊㄱㅊ",   hint:"스포츠라는 특정 사회 제도 내에서 개인이나 집단 혹은 조직이 제한된 자원을 두고 경쟁하거나 이로 인해 발생한 차별적 가치의 영향으로 나타난 스포츠 내 위계 체계", row:0, col:8, direction:"dl" },
+    { id:6,  category:"사회학", answer:"긍정적일탈",   chosung:"ㄱㅈㅈㅇㅌ",   hint:"승리에 대한 강한 집념과 과도한 헌신으로 인해 일반적인 행동 범위를 넘어서는 행위", row:0, col:5, direction:"dl" },
+    { id:7,  category:"생리학", answer:"스포츠심장",   chosung:"ㅅㅍㅊㅅㅈ",   hint:"운동선수나 장기간 규칙적으로 유산소 운동을 하는 사람에게 나타나는 심장의 생리적 변화", row:4, col:5, direction:"ur" },
+    { id:8,  category:"생리학", answer:"초과산소섭취량", chosung:"ㅊㄱㅅㅅㅅㅊㄹ", hint:"운동 후 피로 물질 제거와 신체 기능 회복을 위해 평상시 수준을 초과하여 추가로 섭취하는 산소량", row:9, col:2, direction:"ur" },
+    { id:9,  category:"생리학", answer:"에너지대사",   chosung:"ㅇㄴㅈㄷㅅ",   hint:"생명체가 외부에서 섭취한 영양소를 분해·합성하여 에너지를 생성하고 소비하는 화학적 과정 전체", row:5, col:4, direction:"dl" },
+    { id:10, category:"역학",   answer:"역학적에너지",  chosung:"ㅇㅎㅈㅇㄴㅈ",  hint:"운동 에너지와 위치 에너지의 합", row:5, col:2, direction:"ur" },
+    { id:11, category:"역학",   answer:"관성의법칙",   chosung:"ㄱㅅㅇㅂㅊ",   hint:"물체에 외력이 작용하지 않으면 정지한 물체는 계속 정지해 있으려 하고 움직이는 물체는 계속 움직이려 한다는 법칙", row:5, col:1, direction:"dr" },
+    { id:12, category:"역학",   answer:"인체지레",     chosung:"ㅇㅊㅈㄹ",     hint:"기계의 저항, 몸체, 엔진을 각각 인체의 중력 저항, 뼈, 근력에 빗대어 인간의 신체 움직임과 효율성을 설명하는 원리", row:6, col:0, direction:"dr" }
+  ]
+};
+
+const DIR_VEC = { dr:{dr:1,dc:1}, dl:{dr:1,dc:-1}, ur:{dr:-1,dc:1}, ul:{dr:-1,dc:-1} };
+
+let startCell = null;
+let foundSet  = new Set();
+let foundCells = {};   // "r,c" → wordId
+
+function key(r, c) { return `${r},${c}`; }
+
+function getWordCells(word) {
+  const { dr, dc } = DIR_VEC[word.direction];
+  return Array.from({ length: word.answer.length }, (_, i) =>
+    ({ row: word.row + i * dr, col: word.col + i * dc })
+  );
+}
+
+/* ── 렌더링 ── */
+function renderGrid() {
+  const el = document.getElementById('grid');
+  el.innerHTML = '';
+  for (let r = 0; r < PUZZLE.rows; r++) {
+    for (let c = 0; c < PUZZLE.cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.textContent = PUZZLE.grid[r][c];
+      const k = key(r, c);
+      if (foundCells[k] !== undefined) cell.classList.add('found');
+      if (startCell && startCell.row === r && startCell.col === c) cell.classList.add('start');
+      cell.addEventListener('touchstart', e => { e.preventDefault(); onCellClick(r, c); }, { passive: false });
+      cell.addEventListener('click', () => onCellClick(r, c));
+      el.appendChild(cell);
+    }
+  }
+}
+
+function renderWordList() {
+  const container = document.getElementById('word-list');
+  container.innerHTML = '';
+  ['심리학','사회학','생리학','역학'].forEach(cat => {
+    const words = PUZZLE.words.filter(w => w.category === cat);
+    const hdr = document.createElement('div');
+    hdr.className = 'category-header';
+    hdr.textContent = `[${cat}]`;
+    container.appendChild(hdr);
+
+    words.forEach(word => {
+      const item = document.createElement('div');
+      item.className = 'word-item' + (foundSet.has(word.id) ? ' found' : '');
+      item.id = `wi-${word.id}`;
+
+      const num = document.createElement('div');
+      num.className = 'word-num';
+      num.textContent = word.id;
+
+      const main = document.createElement('div');
+      main.className = 'word-main';
+
+      const cho = document.createElement('div');
+      cho.className = 'word-chosung';
+      cho.textContent = word.chosung;
+
+      const ans = document.createElement('div');
+      ans.className = 'word-answer';
+      ans.textContent = word.answer;
+
+      const hintText = document.createElement('div');
+      hintText.className = 'word-hint-text';
+      hintText.id = `ht-${word.id}`;
+      hintText.textContent = word.hint;
+
+      main.append(cho, ans, hintText);
+
+      const hintBtn = document.createElement('button');
+      hintBtn.className = 'hint-btn';
+      hintBtn.title = '힌트 보기';
+      hintBtn.innerHTML = '<img src="../img/tip.png" alt="힌트">';
+      hintBtn.addEventListener('click', () => {
+        const ht = document.getElementById(`ht-${word.id}`);
+        ht.style.display = ht.style.display === 'block' ? 'none' : 'block';
+      });
+
+      item.append(num, main, hintBtn);
+      container.appendChild(item);
+    });
+  });
+}
+
+function updateProgress() {
+  document.getElementById('progress').textContent = `${foundSet.size} / ${PUZZLE.words.length} 찾음`;
+  if (foundSet.size === PUZZLE.words.length) {
+    document.getElementById('celebration').style.display = 'block';
+  }
+}
+
+function cellEl(r, c) { return document.querySelector(`#grid .cell:nth-child(${r * PUZZLE.cols + c + 1})`); }
+
+function flashError(cells) {
+  cells.forEach(({ row, col }) => cellEl(row, col)?.classList.add('error'));
+  setTimeout(() => cells.forEach(({ row, col }) => cellEl(row, col)?.classList.remove('error')), 500);
+}
+
+/* ── 셀 클릭 ── */
+function onCellClick(r, c) {
+  const k = key(r, c);
+  if (foundCells[k] !== undefined) return;
+
+  if (!startCell) {
+    startCell = { row: r, col: c };
+    cellEl(r, c)?.classList.add('start');
+    return;
+  }
+
+  if (startCell.row === r && startCell.col === c) {
+    cellEl(r, c)?.classList.remove('start');
+    startCell = null;
+    return;
+  }
+
+  const match = tryMatch(startCell.row, startCell.col, r, c);
+  cellEl(startCell.row, startCell.col)?.classList.remove('start');
+
+  if (match) {
+    foundSet.add(match.id);
+    getWordCells(match).forEach(({ row, col }) => {
+      foundCells[key(row, col)] = match.id;
+      const el = cellEl(row, col);
+      if (el) { el.classList.remove('start', 'error'); el.classList.add('found'); }
+    });
+    document.getElementById(`wi-${match.id}`)?.classList.add('found');
+    updateProgress();
+  } else {
+    flashError([startCell, { row: r, col: c }]);
+  }
+  startCell = null;
+}
+
+function tryMatch(r1, c1, r2, c2) {
+  const dr = r2 - r1, dc = c2 - c1;
+  if (Math.abs(dr) !== Math.abs(dc) || dr === 0) return null;
+
+  const steps = Math.abs(dr);
+  const sR = dr > 0 ? 1 : -1;
+  const sC = dc > 0 ? 1 : -1;
+  const sel = Array.from({ length: steps + 1 }, (_, i) => ({ row: r1 + i * sR, col: c1 + i * sC }));
+
+  for (const word of PUZZLE.words) {
+    if (foundSet.has(word.id)) continue;
+    const wc = getWordCells(word);
+    if (wc.length !== sel.length) continue;
+    const fwd = sel.every((c, i) => c.row === wc[i].row && c.col === wc[i].col);
+    const bwd = sel.every((c, i) => c.row === wc[wc.length - 1 - i].row && c.col === wc[wc.length - 1 - i].col);
+    if (fwd || bwd) return word;
+  }
+  return null;
+}
+
+/* ── 리셋 ── */
+function resetGame() {
+  startCell = null;
+  foundSet = new Set();
+  foundCells = {};
+  document.getElementById('celebration').style.display = 'none';
+  document.querySelectorAll('.word-hint-text').forEach(el => el.style.display = 'none');
+  renderGrid();
+  renderWordList();
+  updateProgress();
+}
+
+/* ── 탭 ── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tab-content').forEach(el => {
+      el.classList.toggle('active', el.id === `tab-${tab}`);
+    });
+  });
+});
+
+/* ── QR ── */
+if (APP_URL !== "YOUR_DEPLOY_URL_HERE") {
+  new QRCode(document.getElementById('qrcode'), { text: APP_URL, width: 300, height: 300 });
+}
+
+/* ── 초기화 ── */
+renderGrid();
+renderWordList();
+updateProgress();
+</script>
+</body>
+</html>
