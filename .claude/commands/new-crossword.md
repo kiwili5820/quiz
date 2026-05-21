@@ -14,7 +14,7 @@
 
 ---
 
-## Step 2. 이미지 분석
+## Step 2. 이미지 분석 → 데이터 파일 저장
 
 사용자가 퀴즈판 이미지를 제공하면 아래 순서로 분석한다:
 
@@ -23,24 +23,31 @@
 3. 각 단어의 시작 좌표, 방향, 정답 파악
 4. 힌트 번호 매핑 (가로 → 세로 순, 좌→우, 위→아래)
 
-분석 결과를 아래 형식으로 정리해 사용자에게 보여주고 **확인을 받은 후** Step 3으로 넘어간다.
+분석 결과를 사용자에게 텍스트로 보여주고 **확인을 받은 후**,
+`{과목폴더}/chap{N}/puzzle_data.js` 파일로 즉시 저장한다.
 
+```js
+// puzzle_data.js — 이미지 분석 결과 (자동 생성)
+const PUZZLE = {
+  cols: N,
+  rows: M,
+  words: [
+    { id: 1, direction: "across", row: 0, col: 0, answer: "단어", hint: "힌트" },
+    // ...
+  ]
+};
 ```
-격자 크기: N×M
-단어 목록:
-  1-가로 | 시작(row, col) | 정답: "..." | 힌트: "..."
-  1-세로 | 시작(row, col) | 정답: "..." | 힌트: "..."
-  ...
-```
+
+> 이 파일을 먼저 저장해두면 Step 3이 중단되어도 분석 결과가 보존된다.
 
 ---
 
 ## Step 3. index.html 생성
 
-확인된 데이터로 `{과목폴더}/chap{N}/index.html`을 생성한다.
+`puzzle_data.js`의 PUZZLE 데이터를 기반으로 `{과목폴더}/chap{N}/index.html`을 생성한다.
 
 - 해당 과목의 CLAUDE.md 규칙을 따른다
-- PUZZLE 데이터 구조는 `sports_C/CLAUDE.md`의 형식을 따른다
+- PUZZLE 데이터는 index.html 안에 인라인으로 포함한다 (puzzle_data.js는 참조용)
 - `APP_URL = "https://kiwili5820.github.io/quiz/{과목폴더}/chap{N}/index.html"`
 - 이미지 경로는 `../img/` 기준으로 작성 (lock1.png, lock2.png)
 
