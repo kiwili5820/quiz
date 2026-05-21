@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>대단원 마무리 퀴즈</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/Paperlogy.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Paperlogy', sans-serif; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 16px; font-size: 1.3rem; }
+h1 { font-size: 2.1rem; margin-bottom: 8px; color: #333; font-weight: 700; }
+.prompt { font-size: 1.3rem; color: #555; margin-bottom: 24px; }
+
+/* 탭 */
+.tabs { display: flex; width: 100%; max-width: 600px; margin-bottom: 0; border-radius: 8px 8px 0 0; overflow: hidden; }
+.tab-btn {
+  flex: 1; padding: 14px 10px; border: none; background: #ddd; color: #555;
+  font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background .2s;
+  font-family: 'Paperlogy', sans-serif;
+}
+.tab-btn.active { background: #1976D2; color: #fff; }
+.tab-content { display: none; width: 100%; max-width: 600px; }
+.tab-content.active { display: flex; flex-direction: column; align-items: center; }
+
+/* QR 탭 — 모바일 숨김 */
+.tab-btn.tab-qr, #panel-qr { display: none; }
+
+/* QR 패널 */
+#panel-qr {
+  flex-direction: column; align-items: center; justify-content: center;
+  background: #fff; border-radius: 0 0 8px 8px; padding: 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1); width: 100%;
+}
+#qrcode { display: flex; align-items: center; justify-content: center; }
+#qrcode canvas, #qrcode img { width: 70vh !important; height: 70vh !important; max-width: 100%; }
+.qr-label { margin-top: 16px; font-size: 1.3rem; color: #444; }
+
+/* 퀴즈 패널 */
+#panel-quiz {
+  background: #fff; border-radius: 0 0 8px 8px; padding: 24px 28px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1); width: 100%; position: relative;
+}
+
+/* PC 반응형 — 2컬럼 */
+@media (min-width: 769px) {
+  .tabs, .tab-content { max-width: 1100px; }
+  .tab-btn.tab-qr { display: block; }
+  #panel-qr { display: none; }
+  #panel-qr.active { display: flex; }
+  #panel-quiz.active { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .hints { margin-bottom: 0; }
+  .grid-side { display: flex; flex-direction: column; align-items: center; }
+  .cell { max-width: 74px; max-height: 74px; }
+}
+
+/* 힌트 목록 */
+.hints { margin-bottom: 14px; width: 100%; }
+.hints h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.hints h2.across { color: #E62D8A; }
+.hints h2.down   { color: #00A3C0; }
+.hints ul { list-style: none; }
+.hints li { font-size: 1.1rem; line-height: 1.7; color: #333; padding: 6px 8px; border-radius: 6px; transition: background 0.2s; cursor: pointer; margin-bottom: 4px; border: 1px solid transparent; }
+.hints li:hover { background: #f0f0f0; }
+.hints li.active-hint { background: #FFF9C4; border-color: #FBC02D; }
+.hints li span { font-weight: bold; margin-right: 4px; }
+.blank-box { display: inline-block; transform: scale(1.7); font-weight: 900; color: #1976D2; }
+.lock-img { width: 1.3em; height: 1.3em; flex-shrink: 0; vertical-align: middle; object-fit: contain; }
+
+/* 격자 */
+.grid-wrap { display: flex; justify-content: center; margin-bottom: 14px; scroll-margin-top: 20px; }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cell {
+  width: 11vmin; height: 11vmin;
+  min-width: 44px; min-height: 44px;
+  max-width: 64px; max-height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; background: #fff; border: 1px solid #bbb; border-radius: 2px;
+  cursor: pointer;
+}
+.cell.blocked { background: #AD8B79; border-color: #AD8B79; cursor: default; }
+.cell.selected { background: #E3F2FD; }
+.cell.focused  { background: #90CAF9; }
+.cell.correct  { background: #A5D6A7; }
+.cell.wrong    { background: #EF9A9A; }
+.cell-num { position: absolute; top: 2px; left: 3px; font-size: 0.55rem; line-height: 1; color: #555; pointer-events: none; }
+.cell-char {
+  font-size: 1.1rem; font-weight: bold; color: #222;
+  font-family: 'Paperlogy', sans-serif; padding-top: 8px; line-height: 1; user-select: none; pointer-events: none;
+}
+.cell.wrong .cell-char { color: #c62828; }
+.cell-dir { position: absolute; bottom: 2px; right: 3px; font-size: 0.45rem; color: #1976D2; pointer-events: none; line-height: 1; }
+
+/* 단어 입력 제어 바 */
+.word-input-container {
+  width: 100%; display: none; background: #F5F5F5; border: 2px solid #1976D2; border-radius: 8px;
+  padding: 12px; margin-bottom: 16px; flex-direction: column; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.word-input-container.active { display: flex; }
+.word-info-label { font-size: 0.95rem; font-weight: bold; color: #1976D2; }
+
+.word-input-row { display: flex; gap: 8px; width: 100%; align-items: center; }
+.word-input-row input {
+  flex: 1; padding: 10px 12px; border: 1px solid #bbb; border-radius: 6px; font-size: 1.1rem;
+  font-family: 'Paperlogy', sans-serif; outline: none; min-width: 0;
+}
+.word-input-row input:focus { border-color: #1976D2; box-shadow: 0 0 0 2px rgba(25,118,210,0.2); }
+.btn-word-submit {
+  background: #1976D2; color: #fff; padding: 10px 16px; font-size: 1rem; border-radius: 6px;
+  border: none; cursor: pointer; font-weight: bold; flex-shrink: 0;
+}
+
+/* 모바일 전용 하단 고정 스타일 */
+@media (max-width: 768px) {
+  .word-input-container.active {
+    position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+    margin-bottom: 0; border-radius: 0; border-left: none; border-right: none; border-bottom: none;
+    background: #EEF4FF; z-index: 9999; 
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .word-input-row input { padding: 8px 10px; font-size: 1rem; }
+  .btn-word-submit { padding: 8px 14px; font-size: 0.95rem; }
+  body { padding-bottom: 100px; } /* 중복 힌트 창 제거로 하단 여백 다시 축소 최적화 */
+}
+
+/* 하단 제어 버튼 */
+.btn-row { display: flex; gap: 8px; margin-bottom: 4px; }
+button { padding: 10px 24px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; font-family: 'Paperlogy', sans-serif; }
+.btn-check { background: #1976D2; color: #fff; }
+.btn-reset { background: #757575; color: #fff; }
+
+#congrats { display: none; font-size: 1.3rem; color: #388E3C; font-weight: bold; text-align: center; margin: 12px 0; }
+#ver { position: fixed; top: 6px; right: 10px; font-size: 0.65rem; color: #bbb; cursor: pointer; z-index: 999; user-select: none; }
+</style>
+</head>
+<body>
+
+<div id="ver">v30_index · 05/20</div>
+<h1>십자말풀이 퀴즈</h1>
+<p class="prompt">✏️ 스포츠 인문 문화를 생각하며 십자말풀이를 해 보자.</p>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('quiz')">퀴즈</button>
+  <button class="tab-btn tab-qr" onclick="switchTab('qr')">QR 코드</button>
+</div>
+
+<div id="panel-qr" class="tab-content">
+  <div id="qrcode"></div>
+  <p class="qr-label">QR 코드를 스캔하여 접속하세요.</p>
+</div>
+
+<div id="panel-quiz" class="tab-content active">
+
+  <div class="hints">
+    <h2 class="across"><img class="lock-img" src="img/lock1.png" alt="">가로 열쇠</h2>
+    <ul id="hint-across"></ul>
+    <h2 class="down" style="margin-top:14px"><img class="lock-img" src="img/lock2.png" alt="">세로 열쇠</h2>
+    <ul id="hint-down"></ul>
+  </div>
+
+  <div class="grid-side">
+    <form class="word-input-container" id="word-input-bar" onsubmit="handleFormSubmit(event)">
+      <div class="word-info-label" id="word-info-label">단어를 선택해 주세요.</div>
+      <div class="word-input-row">
+        <input id="word-text-input" type="text" autocomplete="off" spellcheck="false" placeholder="답안 입력" enterkeyhint="done">
+        <button type="submit" class="btn-word-submit">입력</button>
+      </div>
+    </form>
+
+    <div class="grid-wrap" id="grid-wrap-focus">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div id="congrats">🎉 정답입니다! 축하합니다! 🎉</div>
+
+    <div class="btn-row">
+      <button class="btn-check" onclick="checkAnswers()">정답 확인</button>
+      <button class="btn-reset" onclick="resetPuzzle()">다시 풀기</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const APP_URL = "https://kiwili5820.github.io/quiz/sports/index.html";
+
+const PUZZLE = {
+  cols: 7, rows: 7,
+  words: [
+    { id:1, direction:"across", row:2, col:1, answer:"문학",
+      hint:"스포츠는 신체적 활동을 통해 신체와 정신의 건강을 증진하고, □□은 언어와 예술적 표현으로 삶의 전반을 다루어 감성을 풍부하게 한다." },
+    { id:2, direction:"down",   row:0, col:1, answer:"인문문화",
+      hint:"스포츠를 매개로 하는 □□□□에는 시, 소설, 건축, 음악, 종교, 역사, 철학 등이 있다." },
+    { id:3, direction:"across", row:3, col:0, answer:"회화",
+      hint:"스포츠 □□와 조각은 종목의 특징적인 움직임 흐름, 형태 변화, 표현 등을 활용한다." },
+    { id:4, direction:"down",   row:0, col:6, answer:"스포츠윤리",
+      hint:"□□□□□란 스포츠 경기나 스포츠 활동에서 요구되는 규칙과 기본적인 원리를 준수하는 올바른 행위 규범을 말한다." },
+    { id:5, direction:"across", row:4, col:5, answer:"발리",
+      hint:"테니스 경기에서 □□는 주로 네트 근처에서 공을 바운드 없이 쳐서 상대 코트로 보내는 기능이다." },
+    { id:6, direction:"across", row:5, col:0, answer:"기술형",
+      hint:"□□□ 스포츠는 개인의 기술 수행 능력에 따라 승패가 좌우되는 스포츠 활동이다." },
+    { id:6, direction:"down",   row:5, col:0, answer:"기록",
+      hint:"선수들은 □□을 경신하거나 자신의 목표 달성을 위해 연습한다." },
+  ]
+};
+
+// ── 탭 전환 ──────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelector(name === 'quiz' ? '.tab-btn:first-child' : '.tab-btn.tab-qr').classList.add('active');
+}
+
+// ── 데이터 매핑 구조 ──────────────────────────────────
+const cellMap = {};  
+const numMap  = {};  
+const dirMap  = {};  
+const cellValues = {}; 
+
+PUZZLE.words.forEach(w => {
+  const startKey = `${w.row},${w.col}`;
+  if (!numMap[startKey]) numMap[startKey] = w.id;
+  [...w.answer].forEach((ch, i) => {
+    const r = w.direction === "across" ? w.row     : w.row + i;
+    const c = w.direction === "across" ? w.col + i : w.col;
+    const k = `${r},${c}`;
+    cellMap[k] = { answer: ch, r, c };
+    if (!dirMap[k]) dirMap[k] = new Set();
+    dirMap[k].add(w.direction);
+  });
+});
+
+// ── 활성 단어 상태 관리 변수 ───────────────────────────
+let selectedWord = null; 
+let activeCell = null;   
+let activeDir = "across";
+
+const grid = document.getElementById("grid");
+const wordInputBar = document.getElementById("word-input-bar");
+const wordInfoLabel = document.getElementById("word-info-label");
+const wordTextInput = document.getElementById("word-text-input");
+
+// ── 격자 렌더링 및 클릭 이벤트 바인딩 ──────────────────────
+for (let r = 0; r < PUZZLE.rows; r++) {
+  for (let c = 0; c < PUZZLE.cols; c++) {
+    const k = `${r},${c}`;
+    const div = document.createElement("div");
+    div.className = "cell" + (cellMap[k] ? "" : " blocked");
+    div.dataset.key = k;
+
+    if (cellMap[k]) {
+      if (numMap[k]) {
+        const num = document.createElement("span");
+        num.className = "cell-num";
+        num.textContent = numMap[k];
+        div.appendChild(num);
+      }
+      const dirSpan = document.createElement("span");
+      dirSpan.className = "cell-dir";
+      div.appendChild(dirSpan);
+
+      const charSpan = document.createElement("span");
+      charSpan.className = "cell-char";
+      div.appendChild(charSpan);
+
+      div.addEventListener("click", () => handleCellClick(r, c));
+    }
+    grid.appendChild(div);
+  }
+}
+
+function getCell(r, c) { return grid.querySelector(`[data-key="${r},${c}"]`); }
+function getCellChar(r, c) { const d = getCell(r,c); return d ? d.querySelector(".cell-char") : null; }
+
+// ── 격자 빈칸 선택 핸들러 ────────────────────────────────
+function handleCellClick(r, c) {
+  const k = `${r},${c}`;
+  if (!cellMap[k]) return;
+
+  if (activeCell === k && dirMap[k].size > 1) {
+    activeDir = activeDir === "across" ? "down" : "across";
+  } else if (activeCell !== k) {
+    activeCell = k;
+    activeDir = dirMap[k].has("across") ? "across" : "down";
+  }
+
+  const word = PUZZLE.words.find(w => {
+    if (w.direction !== activeDir) return false;
+    const len = [...w.answer].length;
+    for (let i = 0; i < len; i++) {
+      const wr = w.direction === "across" ? w.row     : w.row + i;
+      const wc = w.direction === "across" ? w.col + i : w.col;
+      if (wr === r && wc === c) return true;
+    }
+    return false;
+  });
+
+  if (word) {
+    selectWordWorkflow(word, k);
+  }
+}
+
+// ── 힌트 리스트 터치 핸들러 ───────────────────────────
+function handleHintClick(word) {
+  const startKey = `${word.row},${word.col}`;
+  activeCell = startKey;
+  activeDir = word.direction;
+  
+  selectWordWorkflow(word, startKey);
+}
+
+// ── 단어 선택 통합 워크플로우 ─────────────────────────────
+function selectWordWorkflow(word, targetKey) {
+  selectedWord = word;
+  highlightWordAndHint(word, targetKey);
+  openInputBar(word);
+}
+
+// ── 단어 단위 입력창 활성화 및 정보 노출 ────────────────────
+function openInputBar(word) {
+  wordInputBar.classList.add("active");
+  const dirText = word.direction === "across" ? "가로" : "세로";
+  const len = [...word.answer].length;
+  
+  let guideString = "";
+  for (let i = 0; i < len; i++) {
+    const wr = word.direction === "across" ? word.row     : word.row + i;
+    const wc = word.direction === "across" ? word.col + i : word.col;
+    guideString += (cellValues[`${wr},${wc}`] || " _ ");
+  }
+
+  // 💡 정보창 레이블만 깔끔하게 유지 (하단 중복 힌트 텍스트 맵핑 코드 제거)
+  wordInfoLabel.textContent = `[${word.id}번 ${dirText}] 총 ${len}글자 (현재: ${guideString})`;
+  
+  wordTextInput.maxLength = len;
+  wordTextInput.value = ""; 
+  wordTextInput.placeholder = "정답 또는 글자 입력";
+  
+  setTimeout(() => {
+    wordTextInput.focus();
+  }, 100);
+}
+
+// ── 격자 및 힌트 리스트 시각화 연동 (초점 탈취 방지) ─────────────────────
+function highlightWordAndHint(word, currentKey) {
+  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+  document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+
+  const len = [...word.answer].length;
+  for (let i = 0; i < len; i++) {
+    const hr = word.direction === "across" ? word.row     : word.row + i;
+    const hc = word.direction === "across" ? word.col + i : word.col;
+    const hk = `${hr},${hc}`;
+    const d = getCell(hr, hc);
+    if (d) {
+      if (hk === currentKey) d.classList.add("focused");
+      else d.classList.add("selected");
+    }
+  }
+
+  const hintItems = document.querySelectorAll(`#hint-${word.direction} li`);
+  hintItems.forEach(li => {
+    if (li.dataset.id == word.id) {
+      li.classList.add("active-hint");
+      li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+  if (dirMap[currentKey] && dirMap[currentKey].size > 1) {
+    const s = getCell(currentKey.split(",")[0], currentKey.split(",")[1])?.querySelector(".cell-dir");
+    if (s) s.textContent = activeDir === "across" ? "→" : "↓";
+  }
+}
+
+// ── 자판 외부 터치 등으로 포커스 풀릴 때 바 닫기 ──────
+wordTextInput.addEventListener('blur', () => {
+  setTimeout(() => {
+    if (document.activeElement !== wordTextInput) {
+      wordInputBar.classList.remove("active");
+      grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+      document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+      grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+    }
+  }, 150);
+});
+
+// ── 모바일/PC 통합 전송(Submit) 핸들러 ──────────────────────
+function handleFormSubmit(e) {
+  e.preventDefault(); 
+  submitWord();
+}
+
+// ── 글자 채우기 및 원래 스크롤 흐름 유지 ─────────────────────
+function submitWord() {
+  if (!selectedWord || !activeCell) return;
+
+  const chars = [...wordTextInput.value];
+  if (chars.length === 0) return; 
+
+  const [clickR, clickC] = activeCell.split(",").map(Number);
+  let startIndex = 0;
+  if (selectedWord.direction === "across") {
+    startIndex = clickC - selectedWord.col;
+  } else {
+    startIndex = clickR - selectedWord.row;
+  }
+
+  const wordLen = [...selectedWord.answer].length;
+  let charIdx = 0;
+
+  for (let i = startIndex; i < wordLen; i++) {
+    if (charIdx >= chars.length) break; 
+
+    const r = selectedWord.direction === "across" ? selectedWord.row     : selectedWord.row + i;
+    const c = selectedWord.direction === "across" ? selectedWord.col + i : selectedWord.col;
+    const k = `${r},${c}`;
+
+    const d = getCell(r, c);
+    const span = getCellChar(r, c);
+    
+    if (d && span) {
+      const ch = chars[charIdx++];
+      if (ch !== " ") { 
+        cellValues[k] = ch;
+        span.textContent = ch;
+        span.style.color = "";
+        d.classList.remove("correct", "wrong");
+      }
+    }
+  }
+
+  wordTextInput.blur();
+  wordTextInput.value = "";
+  wordInputBar.classList.remove("active");
+
+  setTimeout(() => {
+    grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+    document.querySelectorAll(".hints li").forEach(li => li.classList.remove("active-hint"));
+    grid.querySelectorAll(".cell-dir").forEach(s => s.textContent = "");
+    
+    const gridTarget = document.getElementById("grid-wrap-focus");
+    if (gridTarget) {
+      gridTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    selectedWord = null;
+    activeCell = null;
+  }, 150);
+}
+
+// ── 채점 및 정답 유효성 확인 ───────────────────────────
+function checkAnswers() {
+  wordInputBar.classList.remove("active");
+  grid.querySelectorAll(".cell:not(.blocked)").forEach(d => d.classList.remove("selected", "focused"));
+  
+  selectedWord = null;
+  activeCell = null;
+
+  let allCorrect = true;
+  Object.entries(cellMap).forEach(([k, data]) => {
+    const [r, c] = k.split(",").map(Number);
+    const d    = getCell(r, c);
+    const span = getCellChar(r, c);
+    if (!d || !span) return;
+
+    d.classList.remove("selected", "focused", "correct", "wrong");
+
+    const val = cellValues[k] || "";
+    if (val === data.answer) {
+      d.classList.add("correct");
+      span.style.color = "";
+    } else {
+      d.classList.add("wrong");
+      span.textContent = data.answer;
+      span.style.color = "#c62828"; 
+      cellValues[k] = data.answer;
+      allCorrect = false;
+    }
+  });
+
+  document.getElementById("congrats").style.display = allCorrect ? "block" : "none";
+}
+
+// ── 판 비우기 및 상태 리셋 ──────────────────────────────
+function resetPuzzle() {
+  wordInputBar.classList.remove("active");
+  selectedWord = null;
+  activeCell = null;
+
+  Object.keys(cellMap).forEach(k => {
+    const [r, c] = k.split(",").map(Number);
+    const d    = getCell(r, c);
+    const span = getCellChar(r, c);
+    delete cellValues[k];
+    if (span) { span.textContent = ""; span.style.color = ""; }
+    if (d)    d.classList.remove("selected", "focused", "correct", "wrong");
+  });
+
+  document.getElementById("congrats").style.display = "none";
+}
+
+// ── 힌트 목록 초기 렌더링 및 클릭 바인딩 ───────────────────────
+const acrossUl = document.getElementById("hint-across");
+const downUl   = document.getElementById("hint-down");
+const seen     = new Set();
+
+PUZZLE.words.forEach(w => {
+  const key = `${w.id}-${w.direction}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  
+  const li = document.createElement("li");
+  li.dataset.id = w.id;
+  li.innerHTML = `<span>${w.id}.</span>${w.hint.replace(/□/g, '<span class="blank-box">□</span>')}`;
+  
+  li.addEventListener("click", () => handleHintClick(w));
+  
+  (w.direction === "across" ? acrossUl : downUl).appendChild(li);
+});
+
+// ── QR 코드 빌드 ──────────────────────────────────────
+if (APP_URL !== "YOUR_DEPLOY_URL_HERE") {
+  new QRCode(document.getElementById("qrcode"), { text: APP_URL, width: 400, height: 400 });
+} else {
+  const qd = document.getElementById("qrcode");
+  qd.style.cssText = "width:70vh;height:70vh;max-width:100%;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:1rem;text-align:center;padding:16px;";
+  qd.textContent = "배포 URL 설정 후 QR 생성됩니다";
+}
+</script>
+</body>
+</html>
